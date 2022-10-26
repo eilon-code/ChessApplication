@@ -9,6 +9,6 @@ public class DesktopLauncher {
 		LwjglApplicationConfiguration config = new LwjglApplicationConfiguration();
 		config.width = 350;
 		config.height = 700;
-		new LwjglApplication(new ScrollingGame(), config);
+		new LwjglApplication(new ScrollingGame(null), config);
 	}
 }

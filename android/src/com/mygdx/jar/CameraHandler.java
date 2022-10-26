@@ -1,69 +1,59 @@
 package com.mygdx.jar;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ComponentName;
-import android.content.Context;
-import android.content.DialogInterface;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
+import android.icu.text.SimpleDateFormat;
 import android.net.Uri;
-import android.os.Build;
-import android.os.Bundle;
+import android.os.Environment;
 import android.os.Parcelable;
 import android.provider.MediaStore;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.widget.ImageView;
-import android.widget.Toolbar;
-
-import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
-public class CameraHandler extends AppCompatActivity {
+public class CameraHandler {
     Bitmap myBitmap;
     Intent data;
     Uri picUri;
-    Context mBase;
 
-    public CameraHandler(){
-        setIntent();
+    public CameraHandler(PackageManager packageManager){
+        setIntent(packageManager, null);
     }
 
-    public Bitmap getCapturedImage(){
-        updateBitmap(data);
+    public Bitmap getCapturedImage(Intent data, ContentResolver resolver, File getImage){
+        updateBitmap(data, resolver, getImage);
         return myBitmap;
     }
 
-    public void setIntent(){
-        data = getPickImageChooserIntent();
+    public void setIntent(PackageManager packageManager, File getImage){
+        data = getPickImageChooserIntent(packageManager, getImage);
     }
 
-    private void updateBitmap(Intent data){
+    public void updateBitmap(Intent data_, ContentResolver resolver, File getImage){
         Bitmap bitmap;
-        if (getPickImageResultUri(data) != null) {
-            picUri = getPickImageResultUri(data);
+        if (getPickImageResultUri(data_, getImage) != null) {
+            picUri = getPickImageResultUri(data_, getImage);
 
             try {
-                myBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), picUri);
+                myBitmap = MediaStore.Images.Media.getBitmap(resolver, picUri);
                 myBitmap = rotateImage(myBitmap, 0);
                 myBitmap = getResizedBitmap(myBitmap, 500);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         } else {
-            bitmap = (Bitmap) Objects.requireNonNull(data.getExtras()).get("data");
-
+            bitmap = (Bitmap) data.getExtras().get("data");
             myBitmap = bitmap;
         }
     }
@@ -73,12 +63,11 @@ public class CameraHandler extends AppCompatActivity {
      * The source can be camera's (ACTION_IMAGE_CAPTURE) or gallery's (ACTION_GET_CONTENT).<br />
      * All possible sources are added to the intent chooser.
      */
-    public Intent getPickImageChooserIntent() {
+    public Intent getPickImageChooserIntent(PackageManager packageManager, File getImage) {
         // Determine Uri of camera image to save.
-        Uri outputFileUri = getCaptureImageOutputUri();
+        Uri outputFileUri = getCaptureImageOutputUri(getImage);
 
         List allIntents = new ArrayList();
-        PackageManager packageManager = getPackageManager();
 
         // collect all camera intents
         Intent captureIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
@@ -123,18 +112,6 @@ public class CameraHandler extends AppCompatActivity {
         return chooserIntent;
     }
 
-    /**
-     * Get URI to image received from capture by camera.
-     */
-    private Uri getCaptureImageOutputUri() {
-        Uri outputFileUri = null;
-        File getImage = getExternalCacheDir();
-        if (getImage != null) {
-            outputFileUri = Uri.fromFile(new File(getImage.getPath(), "profile.png"));
-        }
-        return outputFileUri;
-    }
-
     private static Bitmap rotateImage(Bitmap img, int degree) {
         Matrix matrix = new Matrix();
         matrix.postRotate(degree);
@@ -159,18 +136,71 @@ public class CameraHandler extends AppCompatActivity {
     }
 
     /**
-     * Get the URI of the selected image from {@link #getPickImageChooserIntent()}.<br />
+     * Get URI to image received from capture by camera.
+     */
+    private Uri getCaptureImageOutputUri(File getImage) {
+        Uri outputFileUri = null;
+        if (getImage != null) {
+            outputFileUri = Uri.fromFile(new File(getImage.getPath(), "profile.png"));
+        }
+        return outputFileUri;
+    }
+
+    /**
+     * Get the URI of the selected image from .<br />
      * Will return the correct URI for camera and gallery image.
      *
      * @param data the returned data of the activity result
      */
-    public Uri getPickImageResultUri(Intent data) {
+    public Uri getPickImageResultUri(Intent data, File getImage) {
         boolean isCamera = true;
         if (data != null) {
             String action = data.getAction();
             isCamera = action != null && action.equals(MediaStore.ACTION_IMAGE_CAPTURE);
         }
+        System.out.println("Is Camera: " + isCamera);
 
-        return isCamera ? getCaptureImageOutputUri() : data.getData();
+        return isCamera ? getCaptureImageOutputUri(getImage) : data.getData();
+    }
+
+    private String storeImage(Activity activity, Bitmap image) {
+        File pictureFile = getOutputMediaFile(activity);
+        if (pictureFile == null) {
+            return null;
+        }
+        try {
+            if (image != null){
+                FileOutputStream fos = new FileOutputStream(pictureFile);
+                image.compress(Bitmap.CompressFormat.PNG, 90, fos);
+                fos.flush();
+                fos.close();
+            }
+            else{
+                System.out.println("Bitmap Image Is NULL");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Error Saving Picture");
+        }
+        return pictureFile.getPath();
+    }
+
+    private  File getOutputMediaFile(Activity activity) {
+        File mediaStorageDir = new File(Environment.getExternalStorageDirectory()
+                + "/Android/data/"
+                + activity.getApplicationContext().getPackageName()
+                + "/CameraStream");
+
+        if (!mediaStorageDir.exists()) {
+            if (!mediaStorageDir.mkdirs()) {
+                System.out.println("System return NULL");
+                return null;
+            }
+        }
+        String timeStamp = new SimpleDateFormat("ddMMyyyy_HHmm").format(new Date());
+        String mImageName = "MI_" + timeStamp + ".png";
+        File mediaFile = new File(mediaStorageDir.getPath() + File.separator + mImageName);
+
+        return mediaFile;
     }
 }
