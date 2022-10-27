@@ -55,6 +55,7 @@ class GameScreen implements Screen {
     private Texture CameraImg;
     private Texture SocialMedia;
     private Texture ViewStateImg;
+    private Texture GalleryImg;
     private Texture ButtonImg;
     private Texture WhiteTurn;
     private Texture BlackTurn;
@@ -193,6 +194,7 @@ class GameScreen implements Screen {
         CameraImg = new Texture("core/images/userStuff/camera.png");
         SocialMedia = new Texture("core/images/userStuff/socialMedia.png");
         ViewStateImg = new Texture("core/images/userStuff/viewState.png");
+        GalleryImg = new Texture("core/images/userStuff/gallery.png");
         ButtonImg = new Texture("core/images/userStuff/buttonImg.png");
         WhiteTurn = new Texture("core/images/userStuff/whiteTurn.png");
         BlackTurn = new Texture("core/images/userStuff/blackTurn.png");
@@ -283,15 +285,58 @@ class GameScreen implements Screen {
 
     private void renderCameraState(float deltaTime) {
         String imgPath = "CameraStream/Picture1.png";
-        boolean wasCameraEnabled = IsCameraEnabled && (cameraLauncher != null);
+        if (CameraStream == null){
+            System.out.println("Something went wrong");
+            CameraStream = new Texture(imgPath);
+        }
+        batch.draw(CameraStream, WORLD_WIDTH / 8, WORLD_HEIGHT / 8 * 2, WORLD_WIDTH / 4 * 3, WORLD_HEIGHT / 8 * 5);
+        batch.draw(BackgroundsChessBoardCells[3], 0, 0, WORLD_WIDTH, WORLD_HEIGHT / 8);
+        batch.draw(ButtonImg, (WORLD_WIDTH - WORLD_HEIGHT / 10) / 2, WORLD_HEIGHT / 100, WORLD_HEIGHT / 10, WORLD_HEIGHT / 10);
+        batch.draw(GalleryImg, WORLD_WIDTH / 5 - WORLD_HEIGHT / 20, WORLD_HEIGHT / 100, WORLD_HEIGHT / 10, WORLD_HEIGHT / 10);
+        batch.draw(ViewStateImg, WORLD_WIDTH / 16 * 12, WORLD_HEIGHT / 100, WORLD_HEIGHT / 10, WORLD_HEIGHT / 10);
+
+        TouchedAlready = TouchingNow;
+        TouchingNow = Gdx.input.isTouched();
+        xTouchPixel = Gdx.input.getX();
+        yTouchPixel = Gdx.input.getY();
+
+        if (TouchedAlready && !TouchingNow) {
+            xTouchPixel = Gdx.input.getX();
+            yTouchPixel = Gdx.input.getY();
+            if (yTouchPixel > WORLD_HEIGHT / 8 * 7) {
+                if (xTouchPixel > (float) (WORLD_WIDTH / 16 * 12) && xTouchPixel < (float) (WORLD_WIDTH / 16 * 12) + (float) (WORLD_HEIGHT / 10)) {
+                    State = "View";
+                    if (IsCameraEnabled && (cameraLauncher != null)){
+                        cameraLauncher.closeCamera();
+                    }
+                } else if (xTouchPixel > (WORLD_WIDTH - WORLD_HEIGHT / 10) / 2 && xTouchPixel < (WORLD_WIDTH + WORLD_HEIGHT / 10) / 2) {
+                    StartNewGame(true);
+                    Board newBoard = new Board(Position.Chess_Board);
+                    previousBoards.push(newBoard);
+                    BoardNum = 0;
+                    State = "Game";
+                    ChoosingTitle = false;
+                    if (IsCameraEnabled && (cameraLauncher != null)){
+                        cameraLauncher.closeCamera();
+                    }
+                }
+            }
+        }
 
         if (cameraLauncher != null){
-            IsCameraEnabled = TouchingNow;
+            boolean wasCameraEnabled = IsCameraEnabled;
+            IsCameraEnabled = TouchingNow &&
+                    (xTouchPixel > WORLD_WIDTH / 8 && xTouchPixel < WORLD_WIDTH / 8 * 7) &&
+                    (yTouchPixel > WORLD_HEIGHT / 8 * 1 && yTouchPixel < WORLD_HEIGHT / 8 * 6);
+
+            boolean isGalleryEnabled = TouchingNow &&
+                                        yTouchPixel > WORLD_HEIGHT / 8 * 7 &&
+                                        xTouchPixel > WORLD_WIDTH / 5 - WORLD_HEIGHT / 20 &&
+                                        xTouchPixel < WORLD_WIDTH / 5 + WORLD_HEIGHT / 20;
             if (IsCameraEnabled){
                 if (!wasCameraEnabled){
                     cameraLauncher.openCamera();
                 }
-                CameraStream = cameraLauncher.getCapturedImage();
                 if (CameraStream == null){
                     System.out.println("Something went wrong!!!!!!!!!!!!!");
                 }
@@ -301,43 +346,10 @@ class GameScreen implements Screen {
                     cameraLauncher.closeCamera();
                 }
             }
-        }
-
-        if (CameraStream == null){
-            System.out.println("Something went wrong");
-            CameraStream = new Texture(imgPath);
-        }
-
-        batch.draw(CameraStream, WORLD_WIDTH / 8, WORLD_HEIGHT / 8 * 2, WORLD_WIDTH / 4 * 3, WORLD_HEIGHT / 8 * 5);
-        batch.draw(BackgroundsChessBoardCells[3], 0, 0, WORLD_WIDTH, WORLD_HEIGHT / 8);
-        batch.draw(ButtonImg, WORLD_WIDTH / 64 * 28, WORLD_HEIGHT / 200, WORLD_HEIGHT / 9, WORLD_HEIGHT / 9);
-        batch.draw(ViewStateImg, WORLD_WIDTH / 16 * 12, WORLD_HEIGHT / 100, WORLD_HEIGHT / 10, WORLD_HEIGHT / 10);
-
-        TouchedAlready = TouchingNow;
-        TouchingNow = Gdx.input.isTouched();
-        xTouchPixel = Gdx.input.getX();
-        yTouchPixel = Gdx.input.getY();
-        if (TouchedAlready && !TouchingNow) {
-            xTouchPixel = Gdx.input.getX();
-            yTouchPixel = Gdx.input.getY();
-            if (yTouchPixel > WORLD_HEIGHT / 8 * 7) {
-                if (xTouchPixel > (float) (WORLD_WIDTH / 16 * 12) && xTouchPixel < (float) (WORLD_WIDTH / 16 * 12) + (float) (WORLD_HEIGHT / 10)) {
-                    State = "View";
-                    if (wasCameraEnabled && (cameraLauncher != null)){
-                        cameraLauncher.closeCamera();
-                    }
-                } else if (xTouchPixel > (float) (WORLD_WIDTH / 64 * 28) && xTouchPixel < (float) (WORLD_WIDTH / 64 * 28) + (float) (WORLD_HEIGHT / 9)) {
-                    StartNewGame(true);
-                    Board newBoard = new Board(Position.Chess_Board);
-                    previousBoards.push(newBoard);
-                    BoardNum = 0;
-                    State = "Game";
-                    ChoosingTitle = false;
-                    if (wasCameraEnabled && (cameraLauncher != null)){
-                        cameraLauncher.closeCamera();
-                    }
-                }
+            if (isGalleryEnabled) {
+                cameraLauncher.openGallery();
             }
+            CameraStream = cameraLauncher.getCapturedImage();
         }
     }
 
@@ -576,6 +588,9 @@ class GameScreen implements Screen {
                     State = "Camera";
                 } else if (xTouchPixel > (float) (WORLD_WIDTH / 16 * 12) && xTouchPixel < (float) (WORLD_WIDTH / 16 * 12) + (float) (WORLD_HEIGHT / 10)) {
                     State = "View";
+                }
+                else if (xTouchPixel > WORLD_WIDTH / 16 * 7 && xTouchPixel < WORLD_WIDTH / 16 * 7 + WORLD_HEIGHT / 9){
+                    cameraLauncher.share();
                 }
             }
         }
