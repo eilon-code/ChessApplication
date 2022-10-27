@@ -283,14 +283,29 @@ class GameScreen implements Screen {
 
     private void renderCameraState(float deltaTime) {
         String imgPath = "CameraStream/Picture1.png";
+        boolean wasCameraEnabled = IsCameraEnabled && (cameraLauncher != null);
 
-        IsCameraEnabled = TouchingNow;
-        if (cameraLauncher != null){ // && IsCameraEnabled){
-            CameraStream = cameraLauncher.captureImage();
+        if (cameraLauncher != null){
+            IsCameraEnabled = TouchingNow;
+            if (IsCameraEnabled){
+                if (!wasCameraEnabled){
+                    cameraLauncher.openCamera();
+                }
+                CameraStream = cameraLauncher.getCapturedImage();
+                if (CameraStream == null){
+                    System.out.println("Something went wrong!!!!!!!!!!!!!");
+                }
+            }
+            else{
+                if (wasCameraEnabled){
+                    cameraLauncher.closeCamera();
+                }
+            }
         }
+
         if (CameraStream == null){
-            CameraStream = new Texture(imgPath);
             System.out.println("Something went wrong");
+            CameraStream = new Texture(imgPath);
         }
 
         batch.draw(CameraStream, WORLD_WIDTH / 8, WORLD_HEIGHT / 8 * 2, WORLD_WIDTH / 4 * 3, WORLD_HEIGHT / 8 * 5);
@@ -308,6 +323,9 @@ class GameScreen implements Screen {
             if (yTouchPixel > WORLD_HEIGHT / 8 * 7) {
                 if (xTouchPixel > (float) (WORLD_WIDTH / 16 * 12) && xTouchPixel < (float) (WORLD_WIDTH / 16 * 12) + (float) (WORLD_HEIGHT / 10)) {
                     State = "View";
+                    if (wasCameraEnabled && (cameraLauncher != null)){
+                        cameraLauncher.closeCamera();
+                    }
                 } else if (xTouchPixel > (float) (WORLD_WIDTH / 64 * 28) && xTouchPixel < (float) (WORLD_WIDTH / 64 * 28) + (float) (WORLD_HEIGHT / 9)) {
                     StartNewGame(true);
                     Board newBoard = new Board(Position.Chess_Board);
@@ -315,6 +333,9 @@ class GameScreen implements Screen {
                     BoardNum = 0;
                     State = "Game";
                     ChoosingTitle = false;
+                    if (wasCameraEnabled && (cameraLauncher != null)){
+                        cameraLauncher.closeCamera();
+                    }
                 }
             }
         }

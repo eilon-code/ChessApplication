@@ -17,6 +17,8 @@ import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Log;
@@ -41,11 +43,13 @@ import java.util.Date;
 import java.util.List;
 
 public class AndroidLauncher extends AndroidApplication implements CameraLauncher {
-	private final String cameraID = "0";
+	private static final String cameraID = "0";
 	private boolean isPermissionEnabled;
 
-	private Bitmap capturedImage;
+	private static Bitmap capturedImage;
 	private Texture cameraFootage;
+
+	private CameraHandlerThread mThread = null;
 
 	@Override
 	protected void onCreate (Bundle savedInstanceState) {
@@ -57,23 +61,29 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	}
 
 	@Override
-	public Texture captureImage(){
-		if (isPermissionEnabled){
-			if (cameraID.equals("0")) {
-				CaptureBackPhoto();
-			} else {
-				CaptureFrontPhoto();
-			}
-			System.out.println("Image taken");
+	public Texture getCapturedImage(){
+		// captureImage();
+		return cameraFootage;
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		if (requestCode == 100){
+			capturedImage = (Bitmap) data.getExtras().get("data");
+			syncFootage();
 		}
-		else {
-			System.out.println("No Permission");
-		}
+	}
+
+	private void syncFootage(){
 		Gdx.app.postRunnable(new Runnable() {
 			@Override
 			public void run() {
-				if (capturedImage != null){
-					Texture tex = new Texture(capturedImage.getWidth(), capturedImage.getHeight(), Pixmap.Format.RGBA8888);
+				if (capturedImage != null && capturedImage.getByteCount() != 0){
+					Texture tex = new Texture(
+							capturedImage.getWidth(),
+							capturedImage.getHeight(),
+							Pixmap.Format.RGBA8888);
 					GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex.getTextureObjectHandle());
 					GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, capturedImage, 0);
 					GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
@@ -83,7 +93,46 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 				}
 			}
 		});
-		return cameraFootage;
+	}
+
+	@Override
+	public void captureImage() {
+//		if (isPermissionEnabled){
+//			// openCamera();
+//			captureImageUsingCamera();
+//			syncFootage();
+//		}
+//		else {
+//			System.out.println("No Permission");
+//		}
+	}
+
+	@Override
+	public void openCamera() {
+//		if (mThread == null) {
+//			mThread = new CameraHandlerThread(this);
+//		}
+//		mThread.openCamera();
+		Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+		startActivityForResult(intent, 100);
+	}
+
+	@Override
+	public void closeCamera() {
+//		if (mThread != null){
+//			mThread.stopRun();
+//		}
+//		mThread = null;
+//		System.out.println("Camera Closed");
+	}
+
+	private static void captureImageUsingCamera(){
+		if (cameraID.equals("0")) {
+			CaptureBackPhoto();
+		} else {
+			CaptureFrontPhoto();
+		}
+		System.out.println("Image taken");
 	}
 
 	private void requestAppPermissions() {
@@ -98,12 +147,7 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 						if (report.areAllPermissionsGranted()) {
 							isPermissionEnabled = true;
 							System.out.println("Permission granted");
-							if (cameraID.equals("0")) {
-								CaptureBackPhoto();
-							} else {
-								CaptureFrontPhoto();
-							}
-							System.out.println("Image taken");
+							captureImageUsingCamera();
 						}
 						// check for permanent denial of any permission
 						if (report.isAnyPermissionPermanentlyDenied()) {
@@ -149,7 +193,7 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 		startActivityForResult(intent, 101);
 	}
 
-	private void CaptureFrontPhoto() {
+	private static void CaptureFrontPhoto() {
 		System.out.println("Preparing to take photo");
 		Camera camera = null;
 		Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
@@ -193,7 +237,7 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 		}
 	}
 
-	private void CaptureBackPhoto() {
+	private static void CaptureBackPhoto() {
 		Log.d(TAG, "Preparing to take photo");
 		Camera camera = null;
 		try {
