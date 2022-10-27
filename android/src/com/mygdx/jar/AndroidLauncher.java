@@ -37,6 +37,7 @@ import com.karumi.dexter.listener.multi.MultiplePermissionsListener;
 import com.mygdx.jar.graphicsObjects.ScrollingGame;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Date;
@@ -64,15 +65,6 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	public Texture getCapturedImage(){
 		// captureImage();
 		return cameraFootage;
-	}
-
-	@Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		super.onActivityResult(requestCode, resultCode, data);
-		if (requestCode == 100){
-			capturedImage = (Bitmap) data.getExtras().get("data");
-			syncFootage();
-		}
 	}
 
 	private void syncFootage(){
@@ -118,12 +110,51 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	}
 
 	@Override
+	public void openGallery() {
+		Intent intent = new Intent(Intent.ACTION_PICK,
+				android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+		startActivityForResult(intent, 101);
+	}
+
+	@Override
+	public void share() {
+		Intent sendIntent = new Intent();
+		sendIntent.setAction(Intent.ACTION_SEND);
+		sendIntent.putExtra(Intent.EXTRA_TEXT, "This is my text to send.");
+		sendIntent.setType("text/plain");
+
+		Intent shareIntent = Intent.createChooser(sendIntent, null);
+		startActivity(shareIntent);
+	}
+
+	@Override
 	public void closeCamera() {
 //		if (mThread != null){
 //			mThread.stopRun();
 //		}
 //		mThread = null;
 //		System.out.println("Camera Closed");
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		if (resultCode == RESULT_OK){
+			if (requestCode == 100){
+				capturedImage = (Bitmap) data.getExtras().get("data");
+				syncFootage();
+			}
+			else if (requestCode == 101){
+				Uri targetUri = data.getData();
+				try {
+					capturedImage = BitmapFactory.decodeStream(getContentResolver().openInputStream(targetUri));
+					syncFootage();
+				} catch (FileNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 
 	private static void captureImageUsingCamera(){

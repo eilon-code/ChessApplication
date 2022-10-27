@@ -10,4 +10,8 @@ public interface CameraLauncher {
     void openCamera();
 
     void closeCamera();
+
+    void openGallery();
+
+    void share();
 }
