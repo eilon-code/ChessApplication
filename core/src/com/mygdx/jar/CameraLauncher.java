@@ -2,6 +2,8 @@ package com.mygdx.jar;
 
 import com.badlogic.gdx.graphics.Texture;
 
+import java.io.File;
+
 public interface CameraLauncher {
     Texture getCapturedImage();
 
@@ -14,4 +16,8 @@ public interface CameraLauncher {
     void openGallery();
 
     void share();
+
+    File getImagesDir();
+
+    File getStoredImage();
 }

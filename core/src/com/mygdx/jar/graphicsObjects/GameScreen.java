@@ -19,6 +19,7 @@ import com.mygdx.jar.CameraLauncher;
 import com.mygdx.jar.gameObjects.BoardObjects.Board;
 import com.mygdx.jar.gameObjects.BoardObjects.Point;
 import com.mygdx.jar.gameObjects.BoardObjects.Position;
+import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -128,12 +129,14 @@ class GameScreen implements Screen {
 
     private final CameraLauncher cameraLauncher;
     private boolean IsCameraEnabled;
+    private boolean wasGameMode;
 
 
     GameScreen(int widthScreen, int heightScreen, CameraLauncher launcher) {
         cameraLauncher = launcher;
         IsCameraEnabled = false;
         State = "View"; // "Game"
+        wasGameMode = false;
         ChoosingTitle = false;
         IsFisherChess = false;
         BoardSize = 8;
@@ -262,22 +265,25 @@ class GameScreen implements Screen {
 
         // scrolling background
         renderScrollingBackground(deltaTime);
-
         switch (State) {
             case "Game":
                 renderGameState(deltaTime);
+                wasGameMode = true;
                 break;
 
             case "View":
                 renderViewState(deltaTime);
+                wasGameMode = false;
                 break;
 
             case "Camera":
                 renderCameraState(deltaTime);
+                wasGameMode = false;
                 break;
 
             default:
                 renderGameOptions();
+                wasGameMode = false;
                 break;
         }
         batch.end();
@@ -453,7 +459,12 @@ class GameScreen implements Screen {
         renderOpposeStartingColor();
         renderChoosingPawnNewType();
         renderTitle();
-
+        if (!wasGameMode) {
+            ScreenshotFactory.saveScreenshot(cameraLauncher.getImagesDir(),
+                    (int) BoardLeftLimit,
+                    (int) BoardDownLimit,
+                    (int) SquaredSizeOfBoard, (int) SquaredSizeOfBoard);
+        }
         TouchedAlready = TouchingNow;
         TouchingNow = Gdx.input.isTouched();
         xTouchPixel = Gdx.input.getX();

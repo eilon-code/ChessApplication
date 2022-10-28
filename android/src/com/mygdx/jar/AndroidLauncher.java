@@ -7,6 +7,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.SurfaceTexture;
@@ -24,6 +25,8 @@ import android.provider.Settings;
 import android.util.Log;
 import android.widget.ImageView;
 
+import androidx.core.content.FileProvider;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
@@ -35,6 +38,7 @@ import com.karumi.dexter.PermissionToken;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener;
 import com.mygdx.jar.graphicsObjects.ScrollingGame;
+import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -42,6 +46,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 public class AndroidLauncher extends AndroidApplication implements CameraLauncher {
 	private static final String cameraID = "0";
@@ -120,11 +125,42 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	public void share() {
 		Intent sendIntent = new Intent();
 		sendIntent.setAction(Intent.ACTION_SEND);
+
+		File storedImage = getStoredImage();
+		System.out.println("Loaded Image Path: " + storedImage.getPath());
+
+		Uri imageUri = FileProvider.getUriForFile(Objects.requireNonNull(getApplicationContext()),
+				BuildConfig.APPLICATION_ID + ".provider", storedImage);
+		sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 		sendIntent.putExtra(Intent.EXTRA_TEXT, "This is my text to send.");
-		sendIntent.setType("text/plain");
+		sendIntent.putExtra(Intent.EXTRA_STREAM, imageUri);
+		sendIntent.setType("image/png");
 
 		Intent shareIntent = Intent.createChooser(sendIntent, null);
-		startActivity(shareIntent);
+		Intent chooser = Intent.createChooser(shareIntent, "Share File");
+		List<ResolveInfo> resInfoList = this.getPackageManager().queryIntentActivities(chooser, PackageManager.MATCH_DEFAULT_ONLY);
+		for (ResolveInfo resolveInfo : resInfoList) {
+			String packageName = resolveInfo.activityInfo.packageName;
+			this.grantUriPermission(packageName, imageUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+		}
+
+		startActivity(chooser);
+		// startActivity(shareIntent);
+	}
+
+	@Override
+	public File getImagesDir(){
+		// To be safe, you should check that the SDCard is mounted
+		// using Environment.getExternalStorageState() before doing this.
+		return new File(Environment.getExternalStorageDirectory()
+				+ "/Android/data/"
+				+ getApplicationContext().getPackageName()
+				+ "/Files");
+	}
+
+	@Override
+	public File getStoredImage(){
+		return ScreenshotFactory.getOutputMediaFile(getImagesDir());
 	}
 
 	@Override
