@@ -130,15 +130,14 @@ public class Group_of_pieces {
                             groupPiece.Row_Number = move.Next_row;
                             groupPiece.Column_Number = move.Next_column;
                         } else {
-                            for (Piece group_piece : Group_Pieces) {
-                                if (group_piece != null && !group_piece.IsDeleted && group_piece.Type.equals("Rook") &&
-                                        group_piece.Row_Number == move.Next_row && group_piece.Column_Number == move.Next_column) {
-                                    groupPiece.Row_Number = (((move.Next_row > move.Current_row) ? 1 : 0) + 2) * 2;
+                            for (Piece rook : Group_Pieces) {
+                                if (rook != null && !rook.IsDeleted && rook.Type.equals("Rook") &&
+                                        rook.Row_Number == move.Next_row && rook.Column_Number == move.Next_column) {
+                                    groupPiece.Row_Number = (((move.Next_row > move.Current_row) ? 1 : -1) + 2) * 2;
                                     groupPiece.Column_Number = move.Next_column;
 
-                                    group_piece.Row_Number = groupPiece.Row_Number - ((move.Next_row > move.Current_row) ? 1 : -1);
-                                    group_piece.Column_Number = move.Next_column;
-                                    group_piece.Number_of_moves++;
+                                    rook.Row_Number = groupPiece.Row_Number - ((move.Next_row > move.Current_row) ? 1 : -1);
+                                    rook.Number_of_moves++;
                                 }
                             }
                         }
@@ -166,14 +165,6 @@ public class Group_of_pieces {
                 }
             }
             return deletedPiece;
-        }
-        else{
-            if (Piece_location(startMove_x, startMove_y) != null){
-                // castle
-                if (Piece_location(startMove_x, startMove_y).Color.equals(checkedPiece.Color)){
-                    return null;
-                }
-            }
         }
 
         // normal delete:

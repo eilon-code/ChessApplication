@@ -15,7 +15,7 @@ public interface CameraLauncher {
 
     void openGallery();
 
-    void share();
+    void share(String text);
 
     File getImagesDir();
 

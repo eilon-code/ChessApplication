@@ -177,6 +177,7 @@ public class King extends Piece
                         }
                         if (castle_with_current_rook_possible){
                             Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, group.Group_Pieces[piece_num].Row_Number, Column_Number, is_white_turn, "King");
+                            Group_moves[current_index + number_of_valid_moves].Castle = true;
                             number_of_valid_moves++;
                         }
                     }

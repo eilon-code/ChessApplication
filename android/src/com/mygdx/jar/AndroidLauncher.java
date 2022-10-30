@@ -50,7 +50,11 @@ import java.util.Objects;
 
 public class AndroidLauncher extends AndroidApplication implements CameraLauncher {
 	private static final String cameraID = "0";
-	private boolean isPermissionEnabled;
+	private PermissionManager permissionManager;
+	private String[] permissions =
+			{Manifest.permission.CAMERA,
+			Manifest.permission.WRITE_EXTERNAL_STORAGE,
+			Manifest.permission.READ_EXTERNAL_STORAGE};
 
 	private static Bitmap capturedImage;
 	private Texture cameraFootage;
@@ -110,6 +114,7 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 //			mThread = new CameraHandlerThread(this);
 //		}
 //		mThread.openCamera();
+
 		Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 		startActivityForResult(intent, 100);
 	}
@@ -122,7 +127,7 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	}
 
 	@Override
-	public void share() {
+	public void share(String text) {
 		Intent sendIntent = new Intent();
 		sendIntent.setAction(Intent.ACTION_SEND);
 
@@ -132,7 +137,7 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 		Uri imageUri = FileProvider.getUriForFile(Objects.requireNonNull(getApplicationContext()),
 				BuildConfig.APPLICATION_ID + ".provider", storedImage);
 		sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-		sendIntent.putExtra(Intent.EXTRA_TEXT, "This is my text to send.");
+		sendIntent.putExtra(Intent.EXTRA_TEXT, text);
 		sendIntent.putExtra(Intent.EXTRA_STREAM, imageUri);
 		sendIntent.setType("image/png");
 
@@ -203,7 +208,6 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	}
 
 	private void requestAppPermissions() {
-		isPermissionEnabled = false;
 		System.out.println("Asking permission");
 		Dexter.withActivity(this)
 				.withPermissions(
@@ -212,7 +216,6 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 					@Override
 					public void onPermissionsChecked(MultiplePermissionsReport report) {
 						if (report.areAllPermissionsGranted()) {
-							isPermissionEnabled = true;
 							System.out.println("Permission granted");
 							captureImageUsingCamera();
 						}

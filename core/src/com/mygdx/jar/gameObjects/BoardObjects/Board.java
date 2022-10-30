@@ -5,17 +5,20 @@ import com.mygdx.jar.gameObjects.GamePieces.Piece;
 public class Board {
     // the size of the board is  8*8 (chess board)
     public static int BoardSize;
+    public static final String NonTitle = "התאם כותרת לעמדה";
+    public static final String TitleNotFit = "הכותרת לא מתאימה לעמדה";
 
     // 2D array of type Cell
     public Cell[][] The_Grid;
     public boolean IsWhiteTurn;
+    public String Title;
 
     // constructor
     public Board (int boardSize, Group_of_pieces group, Group_of_pieces other_group, boolean isWhiteTurn)
     {
         BoardSize = boardSize;
-
         IsWhiteTurn = isWhiteTurn;
+        Title = NonTitle;
 
         // create a new 2D array of  type Cell
         The_Grid = new Cell[BoardSize][BoardSize];
@@ -26,6 +29,7 @@ public class Board {
     public Board(Board original_board)
     {
         IsWhiteTurn = original_board.IsWhiteTurn;
+        Title = original_board.Title;
         The_Grid = new Cell[BoardSize][BoardSize];
 
         // fill the 2D array with new Cells

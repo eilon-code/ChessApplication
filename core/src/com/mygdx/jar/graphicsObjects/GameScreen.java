@@ -1,38 +1,30 @@
 package com.mygdx.jar.graphicsObjects;
 
-//import androidx.camera.core.ImageCapture;
+import static com.mygdx.jar.gameObjects.BoardObjects.PositionCheck.TitlesList;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.utils.viewport.StretchViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.badlogic.gdx.Screen;
 import com.mygdx.jar.ChessGame;
 import com.mygdx.jar.CameraLauncher;
 import com.mygdx.jar.gameObjects.BoardObjects.Board;
+import com.mygdx.jar.gameObjects.BoardObjects.DetectionThread;
 import com.mygdx.jar.gameObjects.BoardObjects.Point;
 import com.mygdx.jar.gameObjects.BoardObjects.Position;
+import com.mygdx.jar.gameObjects.BoardObjects.PositionCheck;
 import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.channels.FileChannel;
-import java.util.Objects;
 import java.util.Stack;
 
 class GameScreen implements Screen {
+    private static final String ABC = "אבגדהוזחטיכלמנסעפצקרשתםןךףץ";
+    private String[] CurrentTitlesList;
+
     // screen
     private final Camera camera;
     private final Viewport viewport;
@@ -43,7 +35,6 @@ class GameScreen implements Screen {
     private Texture[] BackgroundsChessBoardCells;
     private Texture[] SpinningOptionImages;
     private Texture ReGameOption;
-    private Texture TitleSelection;
     public PiecesImages piecesImages;
 
     private Texture ReverseMoveOption;
@@ -117,15 +108,19 @@ class GameScreen implements Screen {
     private Stack<Board> previousBoards;
     private String State;
 
-    // font
-    private BitmapFont Whitefont;
-    private BitmapFont Blackfont;
-    // private float hudVerticalMargin, hudLeftX, hudRightX, hudCenterX, hudRow1Y, hudRow2Y, hudSectionWidth;
-    private FreeTypeFontGenerator WhiteFontGenerator;
-    private FreeTypeFontGenerator.FreeTypeFontParameter WhiteFontParameter;
+    private LettersImages Letters_Images;
 
-    private FreeTypeFontGenerator BlackFontGenerator;
-    private FreeTypeFontGenerator.FreeTypeFontParameter BlackFontParameter;
+    private Stack<DetectionThread> detectionThreads;
+
+    // font
+//    private BitmapFont Whitefont;
+//    private BitmapFont Blackfont;
+//    // private float hudVerticalMargin, hudLeftX, hudRightX, hudCenterX, hudRow1Y, hudRow2Y, hudSectionWidth;
+//    private FreeTypeFontGenerator WhiteFontGenerator;
+//    private FreeTypeFontGenerator.FreeTypeFontParameter WhiteFontParameter;
+//
+//    private FreeTypeFontGenerator BlackFontGenerator;
+//    private FreeTypeFontGenerator.FreeTypeFontParameter BlackFontParameter;
 
     private final CameraLauncher cameraLauncher;
     private boolean IsCameraEnabled;
@@ -145,7 +140,10 @@ class GameScreen implements Screen {
         StartNewGame(IsFisherChess);
         Board board = new Board(Position.Chess_Board);
         previousBoards = new Stack<Board>();
+        detectionThreads = new Stack<DetectionThread>();
+
         previousBoards.push(board);
+        detectionThreads.push(new DetectionThread("?", previousBoards.peek()));
 
         direction = 1;
         IsSpinning = false;
@@ -178,7 +176,7 @@ class GameScreen implements Screen {
         ScrollingBackgrounds[2] = new Texture("core/images/ScrollingScreenImages/StarScape02.png");
         ScrollingBackgrounds[3] = new Texture("core/images/ScrollingScreenImages/StarScape03.png");
 
-        BackgroundsChessBoardCells = new Texture[11];
+        BackgroundsChessBoardCells = new Texture[14];
         BackgroundsChessBoardCells[0] = new Texture("core/images/BoardCellsTypes/Type1/BoardWhiteCell.png");
         BackgroundsChessBoardCells[1] = new Texture("core/images/BoardCellsTypes/Type1/BoardBlackCell.png");
         BackgroundsChessBoardCells[2] = new Texture("core/images/BoardClueCells/BoardGreenCell.png");
@@ -190,6 +188,9 @@ class GameScreen implements Screen {
         BackgroundsChessBoardCells[8] = new Texture("core/images/BoardClueCells/BoardDarkPurpleCell.png");
         BackgroundsChessBoardCells[9] = new Texture("core/images/BoardClueCells/BoardPinkCell.png");
         BackgroundsChessBoardCells[10] = new Texture("core/images/BoardClueCells/BoardYellowCell.png");
+        BackgroundsChessBoardCells[11] = new Texture("core/images/BoardClueCells/BoardGrayCell.png");
+        BackgroundsChessBoardCells[12] = new Texture("core/images/BoardClueCells/BoardDarkGrayCell.png");
+        BackgroundsChessBoardCells[13] = new Texture("core/images/BoardClueCells/BoardBlueCell.png");
 
         GrayBackgroundForPawnWinning = new Texture("core/images/PawnWinningImages/Gray.png");
         BlackBackgroundForPawnWinning = new Texture("core/images/PawnWinningImages/Black.png");
@@ -207,7 +208,6 @@ class GameScreen implements Screen {
         SpinningOptionImages[1] = new Texture("core/images/userStuff/SpinBoardOn.png");
 
         ReGameOption = new Texture("core/images/userStuff/ReGame.png");
-        TitleSelection = new Texture("core/images/userStuff/TitleSelection.png");
 
         ReverseMoveOption = new Texture("core/images/userStuff/ReverseMoveOption.png");
         reverseMoveWidth = (int) (WORLD_WIDTH / 10.0);
@@ -226,37 +226,7 @@ class GameScreen implements Screen {
         TouchPos = new Point();
         IsActivePiece = false;
 
-        prepareHUD((int) BoardLeftLimit, (int) BoardRightLimit);
-    }
-
-    private void prepareHUD(int leftLimit, int rightLimit) {
-        // Create a BitmapFont from our font file
-        WhiteFontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("core/images/fonts/EdgeOfTheGalaxyPoster-3zRAp.otf"));
-        WhiteFontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-
-        WhiteFontParameter.size = 20;
-        WhiteFontParameter.borderWidth = (int) ((rightLimit - leftLimit) / 8);
-        WhiteFontParameter.color = new Color(1, 1, 1, 1f);
-        WhiteFontParameter.borderColor = new Color(0, 0, 0, 1f);
-
-        Whitefont = WhiteFontGenerator.generateFont(WhiteFontParameter);
-
-        // Scale the font to feet world
-        Whitefont.getData().setScale(0.1f);
-
-        // Create a BitmapFont from our font file
-        BlackFontGenerator = new FreeTypeFontGenerator(Gdx.files.internal("core/images/fonts/FrankRuhlLibre-Medium.ttf"));
-        BlackFontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-
-        BlackFontParameter.size = 20;
-        BlackFontParameter.borderWidth = (int) ((rightLimit - leftLimit) / 8);
-        BlackFontParameter.color = new Color(0, 0, 0, 1f);
-        BlackFontParameter.borderColor = new Color(255, 255, 255, 1f);
-
-        Blackfont = BlackFontGenerator.generateFont(BlackFontParameter);
-
-        // Scale the font to feet world
-        Blackfont.getData().setScale(0.1f);
+        Letters_Images = new LettersImages();
     }
 
     @Override
@@ -319,6 +289,7 @@ class GameScreen implements Screen {
                     StartNewGame(true);
                     Board newBoard = new Board(Position.Chess_Board);
                     previousBoards.push(newBoard);
+                    detectionThreads.push(new DetectionThread("?", previousBoards.peek()));
                     BoardNum = 0;
                     State = "Game";
                     ChoosingTitle = false;
@@ -458,8 +429,8 @@ class GameScreen implements Screen {
         renderGameTransferScreens();
         renderOpposeStartingColor();
         renderChoosingPawnNewType();
-        renderTitle();
-        if (!wasGameMode) {
+        renderTitle(WORLD_WIDTH / 2, WORLD_HEIGHT / 16 * 15, WORLD_HEIGHT / 40);
+        if (!wasGameMode && (cameraLauncher != null)) {
             ScreenshotFactory.saveScreenshot(cameraLauncher.getImagesDir(),
                     (int) BoardLeftLimit,
                     (int) BoardDownLimit,
@@ -470,7 +441,7 @@ class GameScreen implements Screen {
         xTouchPixel = Gdx.input.getX();
         yTouchPixel = Gdx.input.getY();
 
-        detectInputChoosingTitle();
+        detectInputChoosingTitle(WORLD_WIDTH / 2, WORLD_HEIGHT / 16 * 15, WORLD_HEIGHT / 40);
 
         if (!ChoosingTitle) {
             if (!chessGame.GameOver) {
@@ -564,7 +535,7 @@ class GameScreen implements Screen {
     private void detectInputOpposeStartingColor() {
         if (TouchedAlready && !TouchingNow) {
             if (yTouchPixel < WORLD_HEIGHT / 32 * 7 && yTouchPixel > WORLD_HEIGHT / 32 * 5) {
-                if (xTouchPixel > WORLD_WIDTH / 16 && xTouchPixel < WORLD_WIDTH / 4) {
+                if (xTouchPixel > WORLD_WIDTH / 16 && xTouchPixel < WORLD_WIDTH / 16 + WORLD_WIDTH / 4) {
                     if (!Position.reverseMoveAvailable()) {
                         Position.Is_white_turn = !Position.Is_white_turn;
                         chessGame.ClearHistory();
@@ -601,7 +572,10 @@ class GameScreen implements Screen {
                     State = "View";
                 }
                 else if (xTouchPixel > WORLD_WIDTH / 16 * 7 && xTouchPixel < WORLD_WIDTH / 16 * 7 + WORLD_HEIGHT / 9){
-                    cameraLauncher.share();
+                    if (cameraLauncher != null){
+                        String title = Position.Chess_Board.Title;
+                        cameraLauncher.share((title.equals(Board.NonTitle) || title.equals(Board.TitleNotFit)) ? "" : title);
+                    }
                 }
             }
         }
@@ -681,28 +655,121 @@ class GameScreen implements Screen {
         batch.draw(ReplayReversedMoveOption, (float) (WORLD_WIDTH / 2 + 2 * (WORLD_WIDTH / 30.0) + reverseMoveWidth + reverseMoveWidth / 8.0 * 3), WORLD_HEIGHT - (float) (WORLD_HEIGHT / 64.0 * 50) - reverseMoveHeight, (float) (reverseMoveWidth / 4.0 * 3), reverseMoveHeight);
     }
 
-    private void renderTitle() {
-        String myText = "Choose Title";
-        GlyphLayout glyphLayout = new GlyphLayout();
+    private void renderTitle(float x, float y, float height) {
+        Stack<DetectionThread> tempThreads = new Stack<DetectionThread>();
+        Stack<Board> tempBoards = new Stack<Board>();
+        int boardNum = 0;
+        while (!detectionThreads.empty() && BoardNum != boardNum) {
+            tempThreads.push(detectionThreads.pop());
+            tempBoards.push(previousBoards.pop());
+            boardNum++;
+        }
+        Position.Chess_Board.Title = previousBoards.peek().Title;
+        while (!tempThreads.empty()) {
+            detectionThreads.push(tempThreads.pop());
+            previousBoards.push(tempBoards.pop());
+        }
+        CurrentTitlesList = new String[ChoosingTitle ? (TitlesList.length + (Position.Chess_Board.Title.equals(Board.NonTitle) ? 1 : 0)) : 1];
+        CurrentTitlesList[0] = Position.Chess_Board.Title;
+        boolean hasSeenTitle = false;
+        for (int i = 1; i < CurrentTitlesList.length; i++){
+            if ((CurrentTitlesList[0]).equals(TitlesList[i - 1])){
+                hasSeenTitle = true;
+            }
+            CurrentTitlesList[i] = TitlesList[i - (hasSeenTitle ? 0 : 1)];
+        }
+        float[] totalWidth = new float[CurrentTitlesList.length];
 
-        glyphLayout.setText(Blackfont, myText);
-        batch.draw(BackgroundsChessBoardCells[1], WORLD_WIDTH / 8, WORLD_HEIGHT / 8 * 7, WORLD_WIDTH / 4 * 3, WORLD_WIDTH / 7);
-        renderText(myText, Blackfont, WORLD_WIDTH / 2, WORLD_HEIGHT / 8 * 7 + WORLD_WIDTH / 14);
-    }
+        float wordsSpace = 20;
+        float lettersSpace = 6;
+        float maxWidth = 0;
+        for (int i = 0; i < CurrentTitlesList.length; i++){
+            totalWidth[i] = getTotalTextWidth(CurrentTitlesList[i], lettersSpace, wordsSpace, height);
+            if (totalWidth[i] > maxWidth){
+                maxWidth = totalWidth[i];
+            }
+        }
 
-    private void renderText(String text, BitmapFont font, float x, float y) {
-        GlyphLayout glyphLayout = new GlyphLayout();
+        for (int i = 0; i < CurrentTitlesList.length; i++){
+            batch.draw(BackgroundsChessBoardCells[i > 0 ? (i + 2) % 2 + 11 : 13],
+                    x - (maxWidth / 2) - height / 4,
+                    y - (height * (1 + 2*i)),
+                    maxWidth + height / 2, height * 2);
+            float currentX = x - (totalWidth[i] / 2);
+            String txt = CurrentTitlesList[i];
+            for (int index = txt.length() - 1; index >= 0; index--){
+                char chr = txt.charAt(index);
+                int charIndex = ABC.indexOf(chr);
+                if (charIndex != -1){
+                    float letterWidth = ((float) Letters_Images.Sizes[charIndex].X) / 48 * height;
+                    float letterHeight = ((float) Letters_Images.Sizes[charIndex].Y) / 48 * height;
 
-        glyphLayout.setText(font, text);
-        font.draw(batch, text, x - glyphLayout.width / 2, y + glyphLayout.height / 2);
-    }
-
-    private void detectInputChoosingTitle() {
-        if (TouchedAlready && !TouchingNow) {
-            if (xTouchPixel > WORLD_WIDTH / 8 && xTouchPixel < WORLD_WIDTH / 8 * 7) {
-                if (yTouchPixel < WORLD_HEIGHT / 32 * 3 && yTouchPixel > WORLD_HEIGHT / 32 * 3 - WORLD_WIDTH / 4 / 384 * 230) {
-                    ChoosingTitle = !ChoosingTitle;
+                    batch.draw(Letters_Images.BlackLetters[charIndex],
+                            currentX, y - (height * (1 + 4*i)) / 2 - (charIndex != 11 ? letterHeight - height : 0), letterWidth, letterHeight);
+                    currentX += letterWidth + (lettersSpace / 48 * height);
                 }
+                else {
+                    currentX += wordsSpace / 48 * height;
+                }
+            }
+        }
+    }
+
+    private float getTotalTextWidth(String txt, float lettersSpace, float wordsSpace, float height){
+        float totalWidth = 0;
+        for (int i = 0; i < txt.length(); i++){
+            char chr = txt.charAt(i);
+            int charIndex = ABC.indexOf(chr);
+            if (charIndex != -1){
+                totalWidth += ((float) Letters_Images.Sizes[charIndex].X + (i < txt.length() - 1 ? lettersSpace : 0)) / 48 * height;
+            }
+            else {
+                totalWidth += wordsSpace / 48 * height;
+            }
+        }
+        return totalWidth;
+    }
+
+    private void detectInputChoosingTitle(float x, float y, float height) {
+        if (TouchedAlready && !TouchingNow) {
+            float wordsSpace = 20;
+            float lettersSpace = 6;
+            float totalWidth = getTotalTextWidth(Position.Chess_Board.Title, lettersSpace, wordsSpace, height);
+            if (xTouchPixel > x - (totalWidth / 2) - height / 4 &&
+                    xTouchPixel < x + (totalWidth / 2) + height / 4 &&
+                    yTouchPixel > (WORLD_HEIGHT - y) - height &&
+                    yTouchPixel < (WORLD_HEIGHT - y) + height * (1 + 2*(CurrentTitlesList.length - 1))) {
+                ChoosingTitle = !ChoosingTitle;
+
+                int titleIndex = (int) ((yTouchPixel - (WORLD_HEIGHT - y) + height) / height / 2);
+                String title = CurrentTitlesList[titleIndex];
+
+                Stack<DetectionThread> tempThreads = new Stack<DetectionThread>();
+                Stack<Board> tempBoards = new Stack<Board>();
+                int boardNum = 0;
+                while (!detectionThreads.empty() && BoardNum != boardNum) {
+                    tempThreads.push(detectionThreads.pop());
+                    tempBoards.push(previousBoards.pop());
+                    boardNum++;
+                }
+                if (!detectionThreads.isEmpty()){
+                    DetectionThread thread = detectionThreads.peek();
+                    if (thread.isAlive()){
+                        ChoosingTitle = !ChoosingTitle;
+                    }
+                    if (titleIndex > 0 && !thread.isAlive()){
+                        thread = new DetectionThread(title, previousBoards.peek());
+                        detectionThreads.pop();
+                        detectionThreads.push(thread);
+                    }
+                }
+                while (!tempThreads.empty()) {
+                    detectionThreads.push(tempThreads.pop());
+                    previousBoards.push(tempBoards.pop());
+                }
+            }
+            else if (ChoosingTitle){
+                ChoosingTitle = false;
             }
         }
     }
