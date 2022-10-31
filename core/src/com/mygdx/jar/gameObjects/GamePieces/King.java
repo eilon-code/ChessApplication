@@ -167,10 +167,25 @@ public class King extends Piece
                     if (group.Group_Pieces[piece_num].Type.equals("Rook") && !group.Group_Pieces[piece_num].HasBeenMoved())
                     {
                         boolean castle_with_current_rook_possible = true;
-                        int startRow = Math.min(Row_Number, group.Group_Pieces[piece_num].Row_Number);
-                        int endRow = Math.max(Row_Number, group.Group_Pieces[piece_num].Row_Number);
-                        for (int row = startRow + 1; row < endRow; row++){
-                            if (chess_board.The_Grid[row][Column_Number].Is_there_Piece) {
+
+                        int startRow;
+                        int endRow;
+                        if (Row_Number < group.Group_Pieces[piece_num].Row_Number)
+                        {
+                            int wantedRow = 6;
+                            startRow = Math.min(Row_Number, wantedRow - 1);
+                            endRow = Math.max(group.Group_Pieces[piece_num].Row_Number, wantedRow);
+                        }
+                        else
+                        {
+                            int wantedRow = 2;
+                            startRow = Math.min(group.Group_Pieces[piece_num].Row_Number, wantedRow);
+                            endRow = Math.max(Row_Number, wantedRow + 1);
+                        }
+
+                        for (int row = startRow; row <= endRow; row++){
+                            if (chess_board.The_Grid[row][Column_Number].Is_there_Piece &&
+                                    row != Row_Number && row != group.Group_Pieces[piece_num].Row_Number){
                                 castle_with_current_rook_possible = false;
                                 break;
                             }

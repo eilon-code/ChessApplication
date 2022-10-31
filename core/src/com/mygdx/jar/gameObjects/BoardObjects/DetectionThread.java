@@ -3,7 +3,7 @@ package com.mygdx.jar.gameObjects.BoardObjects;
 import static com.mygdx.jar.gameObjects.BoardObjects.PositionCheck.TitlesList;
 
 public class DetectionThread extends Thread{
-    public DetectionThread(final String title, final Board board) {
+    public DetectionThread(final String title, final Board board, final int boardNum) {
         super(new Runnable() {
             @Override
             public void run() {
@@ -19,7 +19,7 @@ public class DetectionThread extends Thread{
                 }
                 System.out.println("Run");
 
-                PositionCheck positionChecker = new PositionCheck(board);
+                PositionCheck positionChecker = new PositionCheck(board, boardNum);
                 String previousTitle = board.Title;
                 board.Title = "בודק התאמת כותרת לעמדה";
                 if (positionChecker.IsTitleFit(title)){

@@ -143,7 +143,7 @@ class GameScreen implements Screen {
         detectionThreads = new Stack<DetectionThread>();
 
         previousBoards.push(board);
-        detectionThreads.push(new DetectionThread("?", previousBoards.peek()));
+        detectionThreads.push(new DetectionThread("?", previousBoards.peek(), 0));
 
         direction = 1;
         IsSpinning = false;
@@ -289,7 +289,7 @@ class GameScreen implements Screen {
                     StartNewGame(true);
                     Board newBoard = new Board(Position.Chess_Board);
                     previousBoards.push(newBoard);
-                    detectionThreads.push(new DetectionThread("?", previousBoards.peek()));
+                    detectionThreads.push(new DetectionThread("?", previousBoards.peek(), 0));
                     BoardNum = 0;
                     State = "Game";
                     ChoosingTitle = false;
@@ -402,17 +402,28 @@ class GameScreen implements Screen {
                         State = "Camera";
                     }
                 } else if (!HasScrolled && BoardNum != -1 && currentTime > 0.1) {
-                    Stack<Board> temp = new Stack<Board>();
+                    Stack<Board> tempBoards = new Stack<Board>();
+                    Stack<DetectionThread> tempThreads = new Stack<DetectionThread>();
                     int boardNum = 0;
                     while (!previousBoards.empty() && BoardNum != boardNum) {
-                        temp.push(previousBoards.pop());
+                        tempBoards.push(previousBoards.pop());
+                        tempThreads.push(detectionThreads.pop());
                         boardNum++;
                     }
+                    if (detectionThreads.peek().isAlive()){
+                        PositionCheck.setNotReadyToCopy();
+                        do {
+                            PositionCheck.stop();
+                        } while (detectionThreads.peek().isAlive() && (!PositionCheck.isReadyToCopy()) && (!previousBoards.peek().Title.equals(Board.TitleNotFit)));
+                    }
+
                     EnterGame(previousBoards.peek());
+                    PositionCheck.resume();
                     State = "Game";
                     ChoosingTitle = false;
-                    while (!temp.empty()) {
-                        previousBoards.push(temp.pop());
+                    while (!tempBoards.empty()) {
+                        previousBoards.push(tempBoards.pop());
+                        detectionThreads.push(tempThreads.pop());
                     }
                 }
             }
@@ -758,7 +769,8 @@ class GameScreen implements Screen {
                         ChoosingTitle = !ChoosingTitle;
                     }
                     if (titleIndex > 0 && !thread.isAlive()){
-                        thread = new DetectionThread(title, previousBoards.peek());
+                        PositionCheck.globalBoardNum = BoardNum;
+                        thread = new DetectionThread(title, previousBoards.peek(), BoardNum);
                         detectionThreads.pop();
                         detectionThreads.push(thread);
                     }

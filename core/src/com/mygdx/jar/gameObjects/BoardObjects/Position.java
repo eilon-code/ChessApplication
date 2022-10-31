@@ -163,11 +163,6 @@ public class Position {
                             legal_moves[move_index] = null;
                             break;
                         }
-                        if (Chess_Board.The_Grid[row][optional_move.Current_column].Is_there_Piece &&
-                                row != optional_move.Current_row && row != optional_move.Next_row){
-                            legal_moves[move_index] = null;
-                            break;
-                        }
                     }
                 }
                 Play_move(optional_move);
