@@ -30,55 +30,55 @@ class GameScreen implements Screen {
     private final Viewport viewport;
 
     // graphics
-    private SpriteBatch batch;
-    private Texture[] ScrollingBackgrounds;
-    private Texture[] BackgroundsChessBoardCells;
-    private Texture[] SpinningOptionImages;
-    private Texture ReGameOption;
-    public PiecesImages piecesImages;
+    private final SpriteBatch batch;
+    private final Texture[] ScrollingBackgrounds;
+    private final Texture[] BackgroundsChessBoardCells;
+    private final Texture[] SpinningOptionImages;
+    private final Texture ReGameOption;
+    public final PiecesImages piecesImages;
 
-    private Texture ReverseMoveOption;
-    private Texture ReplayReversedMoveOption;
+    private final Texture ReverseMoveOption;
+    private final Texture ReplayReversedMoveOption;
 
-    private Texture GrayBackgroundForPawnWinning;
-    private Texture BlackBackgroundForPawnWinning;
+    private final Texture GrayBackgroundForPawnWinning;
+    private final Texture BlackBackgroundForPawnWinning;
 
-    private Texture TrashCan;
-    private Texture CameraImg;
-    private Texture SocialMedia;
-    private Texture ViewStateImg;
-    private Texture GalleryImg;
-    private Texture ButtonImg;
-    private Texture WhiteTurn;
-    private Texture BlackTurn;
+    private final Texture TrashCan;
+    private final Texture CameraImg;
+    private final Texture SocialMedia;
+    private final Texture ViewStateImg;
+    private final Texture GalleryImg;
+    private final Texture ButtonImg;
+    private final Texture WhiteTurn;
+    private final Texture BlackTurn;
 
     private Texture CameraStream;
 
     // timing
-    private float backgroundMaxScrollingSpeed;
-    private float[] backgroundOffsets = {0, 0, 0, 0};
+    private final float backgroundMaxScrollingSpeed;
+    private final float[] backgroundOffsets = {0, 0, 0, 0};
 
     // world parameters
-    private float WORLD_WIDTH;
-    private float WORLD_HEIGHT;
-    private float SquaredSizeOfBoard;
+    private final float WORLD_WIDTH;
+    private final float WORLD_HEIGHT;
+    private final float SquaredSizeOfBoard;
 
-    private float BoardLeftLimit;
-    private float BoardRightLimit;
-    private float BoardDownLimit;
-    private float BoardUpLimit;
+    private final float BoardLeftLimit;
+    private final float BoardRightLimit;
+    private final float BoardDownLimit;
+    private final float BoardUpLimit;
 
-    private float BoardViewLeftLimit;
-    private float BoardViewRightLimit;
-    private float BoardViewDownLimit;
-    private float BoardViewUpLimit;
+    private final float BoardViewLeftLimit;
+    private final float BoardViewRightLimit;
+    private final float BoardViewDownLimit;
+    private final float BoardViewUpLimit;
     private int BoardNum;
     private boolean HasScrolled;
 
-    private int reGameWidth;
-    private int reGameHeight;
-    private int reverseMoveWidth;
-    private int reverseMoveHeight;
+    private final int reGameWidth;
+    private final int reGameHeight;
+    private final int reverseMoveWidth;
+    private final int reverseMoveHeight;
 
     // game stuff
     private final int BoardSize;
@@ -105,27 +105,17 @@ class GameScreen implements Screen {
 
     // game types
     private boolean IsFisherChess;
-    private Stack<Board> previousBoards;
+    private final LettersImages Letters_Images;
+
+    private final Stack<Board> previousBoards;
+    private final Stack<Board> previousBoardsForView;
+    private final Stack<DetectionThread> detectionThreads;
+
     private String State;
-
-    private LettersImages Letters_Images;
-
-    private Stack<DetectionThread> detectionThreads;
-
-    // font
-//    private BitmapFont Whitefont;
-//    private BitmapFont Blackfont;
-//    // private float hudVerticalMargin, hudLeftX, hudRightX, hudCenterX, hudRow1Y, hudRow2Y, hudSectionWidth;
-//    private FreeTypeFontGenerator WhiteFontGenerator;
-//    private FreeTypeFontGenerator.FreeTypeFontParameter WhiteFontParameter;
-//
-//    private FreeTypeFontGenerator BlackFontGenerator;
-//    private FreeTypeFontGenerator.FreeTypeFontParameter BlackFontParameter;
 
     private final CameraLauncher cameraLauncher;
     private boolean IsCameraEnabled;
     private boolean wasGameMode;
-
 
     GameScreen(int widthScreen, int heightScreen, CameraLauncher launcher) {
         cameraLauncher = launcher;
@@ -140,10 +130,12 @@ class GameScreen implements Screen {
         StartNewGame(IsFisherChess);
         Board board = new Board(Position.Chess_Board);
         previousBoards = new Stack<Board>();
+        previousBoardsForView = new Stack<Board>();
         detectionThreads = new Stack<DetectionThread>();
 
         previousBoards.push(board);
-        detectionThreads.push(new DetectionThread("?", previousBoards.peek(), 0));
+        previousBoardsForView.push(new Board(board));
+        detectionThreads.push(new DetectionThread("?", previousBoardsForView.peek()));
 
         direction = 1;
         IsSpinning = false;
@@ -289,7 +281,8 @@ class GameScreen implements Screen {
                     StartNewGame(true);
                     Board newBoard = new Board(Position.Chess_Board);
                     previousBoards.push(newBoard);
-                    detectionThreads.push(new DetectionThread("?", previousBoards.peek(), 0));
+                    previousBoardsForView.push(new Board(newBoard));
+                    detectionThreads.push(new DetectionThread("?", previousBoardsForView.peek()));
                     BoardNum = 0;
                     State = "Game";
                     ChoosingTitle = false;
@@ -385,16 +378,20 @@ class GameScreen implements Screen {
                     if (xTouchPixel > WORLD_WIDTH / 4 * 3) {
                         if (BoardNum != -1) {
                             Stack<Board> temp = new Stack<Board>();
+                            Stack<Board> tempView = new Stack<Board>();
                             int boardNum = 0;
                             while (!previousBoards.empty() && BoardNum != boardNum) {
                                 temp.push(previousBoards.pop());
+                                tempView.push(previousBoardsForView.pop());
                                 boardNum++;
                             }
                             if (!previousBoards.empty()) {
                                 previousBoards.pop();
+                                previousBoardsForView.pop();
                             }
                             while (!temp.empty()) {
                                 previousBoards.push(temp.pop());
+                                previousBoardsForView.push(tempView.pop());
                             }
                             BoardNum = -1;
                         }
@@ -403,26 +400,21 @@ class GameScreen implements Screen {
                     }
                 } else if (!HasScrolled && BoardNum != -1 && currentTime > 0.1) {
                     Stack<Board> tempBoards = new Stack<Board>();
+                    Stack<Board> tempBoardsView = new Stack<Board>();
                     Stack<DetectionThread> tempThreads = new Stack<DetectionThread>();
                     int boardNum = 0;
                     while (!previousBoards.empty() && BoardNum != boardNum) {
                         tempBoards.push(previousBoards.pop());
+                        tempBoardsView.push(previousBoardsForView.pop());
                         tempThreads.push(detectionThreads.pop());
                         boardNum++;
                     }
-                    if (detectionThreads.peek().isAlive()){
-                        PositionCheck.setNotReadyToCopy();
-                        do {
-                            PositionCheck.stop();
-                        } while (detectionThreads.peek().isAlive() && (!PositionCheck.isReadyToCopy()) && (!previousBoards.peek().Title.equals(Board.TitleNotFit)));
-                    }
-
                     EnterGame(previousBoards.peek());
-                    PositionCheck.resume();
                     State = "Game";
                     ChoosingTitle = false;
                     while (!tempBoards.empty()) {
                         previousBoards.push(tempBoards.pop());
+                        previousBoardsForView.push(tempBoardsView.pop());
                         detectionThreads.push(tempThreads.pop());
                     }
                 }
@@ -553,16 +545,21 @@ class GameScreen implements Screen {
 
                         if (BoardNum != -1) {
                             Stack<Board> temp = new Stack<Board>();
+                            Stack<Board> tempView = new Stack<Board>();
+
                             int boardNum = 0;
                             while (!previousBoards.empty() && BoardNum != boardNum) {
                                 temp.push(previousBoards.pop());
+                                tempView.push(previousBoardsForView.pop());
                                 boardNum++;
                             }
                             if (!previousBoards.empty()) {
                                 previousBoards.peek().IsWhiteTurn = !previousBoards.peek().IsWhiteTurn;
+                                previousBoardsForView.peek().IsWhiteTurn = previousBoards.peek().IsWhiteTurn;
                             }
                             while (!temp.empty()) {
                                 previousBoards.push(temp.pop());
+                                previousBoardsForView.push(tempView.pop());
                             }
                         }
                         if (IsSpinning && Position.Is_white_turn ^ direction == 1) {
@@ -669,16 +666,23 @@ class GameScreen implements Screen {
     private void renderTitle(float x, float y, float height) {
         Stack<DetectionThread> tempThreads = new Stack<DetectionThread>();
         Stack<Board> tempBoards = new Stack<Board>();
+        Stack<Board> tempBoardsView = new Stack<Board>();
+
         int boardNum = 0;
         while (!detectionThreads.empty() && BoardNum != boardNum) {
             tempThreads.push(detectionThreads.pop());
             tempBoards.push(previousBoards.pop());
+            tempBoardsView.push(previousBoardsForView.pop());
             boardNum++;
         }
-        Position.Chess_Board.Title = previousBoards.peek().Title;
+        if (!previousBoards.empty()){
+            previousBoards.peek().Title = previousBoardsForView.peek().Title;
+            Position.Chess_Board.Title = previousBoards.peek().Title;
+        }
         while (!tempThreads.empty()) {
             detectionThreads.push(tempThreads.pop());
             previousBoards.push(tempBoards.pop());
+            previousBoardsForView.push(tempBoardsView.pop());
         }
         CurrentTitlesList = new String[ChoosingTitle ? (TitlesList.length + (Position.Chess_Board.Title.equals(Board.NonTitle) ? 1 : 0)) : 1];
         CurrentTitlesList[0] = Position.Chess_Board.Title;
@@ -702,7 +706,7 @@ class GameScreen implements Screen {
         }
 
         for (int i = 0; i < CurrentTitlesList.length; i++){
-            batch.draw(BackgroundsChessBoardCells[i > 0 ? (i + 2) % 2 + 11 : 13],
+            batch.draw(BackgroundsChessBoardCells[i > 0 ? (i + 2) % 2 + 11 : (Position.Chess_Board.Title.equals(Board.TitleNotFit) ? 4 : 13)],
                     x - (maxWidth / 2) - height / 4,
                     y - (height * (1 + 2*i)),
                     maxWidth + height / 2, height * 2);
@@ -757,20 +761,23 @@ class GameScreen implements Screen {
 
                 Stack<DetectionThread> tempThreads = new Stack<DetectionThread>();
                 Stack<Board> tempBoards = new Stack<Board>();
+                Stack<Board> tempBoardsView = new Stack<Board>();
+
                 int boardNum = 0;
                 while (!detectionThreads.empty() && BoardNum != boardNum) {
                     tempThreads.push(detectionThreads.pop());
                     tempBoards.push(previousBoards.pop());
+                    tempBoardsView.push(previousBoardsForView.pop());
                     boardNum++;
                 }
-                if (!detectionThreads.isEmpty()){
+                if (!detectionThreads.empty()){
                     DetectionThread thread = detectionThreads.peek();
                     if (thread.isAlive()){
                         ChoosingTitle = !ChoosingTitle;
                     }
-                    if (titleIndex > 0 && !thread.isAlive()){
-                        PositionCheck.globalBoardNum = BoardNum;
-                        thread = new DetectionThread(title, previousBoards.peek(), BoardNum);
+                    else if (titleIndex > 0){
+                        System.out.println("Size = " + previousBoards.size());
+                        thread = new DetectionThread(title, previousBoardsForView.peek());
                         detectionThreads.pop();
                         detectionThreads.push(thread);
                     }
@@ -778,6 +785,7 @@ class GameScreen implements Screen {
                 while (!tempThreads.empty()) {
                     detectionThreads.push(tempThreads.pop());
                     previousBoards.push(tempBoards.pop());
+                    previousBoardsForView.push(tempBoardsView.pop());
                 }
             }
             else if (ChoosingTitle){
@@ -911,8 +919,8 @@ class GameScreen implements Screen {
         int boardNum = 0;
         boolean isBoardNumMatch = false;
         Stack<Board> temp = new Stack<Board>();
-        while (!previousBoards.empty()) {
-            temp.push(previousBoards.pop());
+        while (!previousBoardsForView.empty()) {
+            temp.push(previousBoardsForView.pop());
             float bottomX = (boardNum % 2 == 0 ? BoardViewLeftLimit : BoardViewRightLimit);
             float bottomY = ViewOffset + BoardViewDownLimit - (int) (boardNum / 2) * (SquaredSizeOfBoard / 2 + (WORLD_WIDTH - SquaredSizeOfBoard) / 3);
             if (BoardNum == boardNum) {
@@ -923,7 +931,7 @@ class GameScreen implements Screen {
             boardNum++;
         }
         while (!temp.empty()) {
-            previousBoards.push(temp.pop());
+            previousBoardsForView.push(temp.pop());
         }
         batch.draw(BackgroundsChessBoardCells[3], 0, 0, WORLD_WIDTH, (float) (WORLD_HEIGHT / 8));
         if (isBoardNumMatch) {

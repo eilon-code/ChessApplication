@@ -3,7 +3,7 @@ package com.mygdx.jar.gameObjects.BoardObjects;
 import static com.mygdx.jar.gameObjects.BoardObjects.PositionCheck.TitlesList;
 
 public class DetectionThread extends Thread{
-    public DetectionThread(final String title, final Board board, final int boardNum) {
+    public DetectionThread(final String title, final Board board) {
         super(new Runnable() {
             @Override
             public void run() {
@@ -18,10 +18,10 @@ public class DetectionThread extends Thread{
                     return;
                 }
                 System.out.println("Run");
-
-                PositionCheck positionChecker = new PositionCheck(board, boardNum);
                 String previousTitle = board.Title;
                 board.Title = "בודק התאמת כותרת לעמדה";
+
+                PositionCheck positionChecker = new PositionCheck(board);
                 if (positionChecker.IsTitleFit(title)){
                     System.out.println("Title Match");
                     board.Title = Position.Chess_Board.Title;

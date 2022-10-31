@@ -11,10 +11,6 @@ import java.util.Stack;
 
 public class PositionCheck {
     public static final String[] TitlesList = new String[] {"מט בשני מסעים", "מט בשלושה מסעים", "מט בארבעה מסעים", "מט לדעת בשני מסעים", "מט עזר בשני מסעים", "כפיית פט בשני מסעים"};
-    public static boolean IsDynamic = true;
-    public static boolean IsReadyToCopy = false;
-    public static int globalBoardNum;
-    private final int BoardNum;
 
     public final Board Chess_Board;
     public final Group_of_pieces White_Pieces;
@@ -24,14 +20,13 @@ public class PositionCheck {
     public Point KingAtDanger;
     private final Stack<Move> RecordedMoves;
 
-    public PositionCheck(Board chess_board, int boardNum) {
-        Chess_Board = chess_board; // new Board(chess_board); // magic happens
+    public PositionCheck(Board chess_board) {
+        Chess_Board = chess_board; // new Board(chess_board); // here the magic happens
         White_Pieces = new Group_of_pieces(chess_board, "white");
         Black_Pieces = new Group_of_pieces(chess_board, "black");
         Is_white_turn = chess_board.IsWhiteTurn;
         Is_white_up = false;
-        RecordedMoves = new Stack<Move>();
-        BoardNum = boardNum;
+        RecordedMoves = new Stack<>();
         setDangerCell(true);
     }
 
@@ -412,20 +407,9 @@ public class PositionCheck {
         // update board:
         Chess_Board.Update_Board(White_Pieces, Black_Pieces);
         Is_white_turn = !Is_white_turn;
-
-        if (!IsDynamic && BoardNum == globalBoardNum){
-            System.out.println("Reverse move in Wait");
-            Stack<Move> reversedMoves = ReverseAllMoves();
-            System.out.println("Ready to copy");
-            while (!IsDynamic && BoardNum == globalBoardNum){
-                IsReadyToCopy = true;
-            }
-            System.out.println("Replay moves");
-            ReplayAllReversedMoves(reversedMoves);
-        }
     }
 
-    public Move Reverse_move() {
+    public void Reverse_move() {
         Move move = RecordedMoves.pop();
         if (move.Deleted_piece != null){
             move.Deleted_piece.IsDeleted = false;
@@ -471,7 +455,6 @@ public class PositionCheck {
 
         // update board:
         Chess_Board.Update_Board(White_Pieces, Black_Pieces);
-        return move;
     }
 
     public void DeclarePawnCrown(String type) {
@@ -513,36 +496,5 @@ public class PositionCheck {
 
         // update board:
         Chess_Board.The_Grid[pawn.Row_Number][pawn.Column_Number].Type = type;
-    }
-
-    public Stack<Move> ReverseAllMoves(){
-        Stack<Move> reversedMoves = new Stack<>();
-        while (!RecordedMoves.isEmpty()){
-            reversedMoves.push(Reverse_move());
-        }
-        return reversedMoves;
-    }
-
-    public void ReplayAllReversedMoves(Stack<Move> reversedMoves){
-        while (!reversedMoves.isEmpty()){
-            Play_move(reversedMoves.pop());
-        }
-    }
-
-    public static void stop(){
-        IsDynamic = false;
-    }
-
-    public static void resume(){
-        IsDynamic = true;
-        IsReadyToCopy = false;
-    }
-
-    public static boolean isReadyToCopy(){
-        return IsReadyToCopy;
-    }
-
-    public static void setNotReadyToCopy(){
-        IsReadyToCopy = false;
     }
 }

@@ -37,8 +37,8 @@ public class ScreenshotFactory {
         // between applications and persist after your app has been uninstalled.
 
         // Create the storage directory if it does not exist
-        if (! mediaStorageDir.exists()){
-            if (! mediaStorageDir.mkdirs()){
+        if (!mediaStorageDir.exists()){
+            if (!mediaStorageDir.mkdirs()){
                 System.out.println("Return NULL");
                 return null;
             }

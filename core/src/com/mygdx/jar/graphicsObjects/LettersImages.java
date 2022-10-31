@@ -11,7 +11,7 @@ public class LettersImages {
     {
         for (int i = 0; i < BlackLetters.length; i++){
             String num = String.valueOf(i + 1);
-            BlackLetters[i] = new Texture("core/images/Letters/black_" + num + ".png");
+            BlackLetters[i] = new Texture("core/images/letters/black_" + num + ".png");
         }
         Sizes[0] = new Point(40, 48);
         Sizes[1] = new Point(41, 48);
