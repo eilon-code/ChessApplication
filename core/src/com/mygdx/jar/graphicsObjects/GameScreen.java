@@ -16,7 +16,6 @@ import com.mygdx.jar.gameObjects.BoardObjects.Board;
 import com.mygdx.jar.gameObjects.BoardObjects.DetectionThread;
 import com.mygdx.jar.gameObjects.BoardObjects.Point;
 import com.mygdx.jar.gameObjects.BoardObjects.Position;
-import com.mygdx.jar.gameObjects.BoardObjects.PositionCheck;
 import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
 
 import java.util.Stack;
@@ -116,9 +115,11 @@ class GameScreen implements Screen {
     private final CameraLauncher cameraLauncher;
     private boolean IsCameraEnabled;
     private boolean wasGameMode;
+    private boolean IsPermissionGranted;
 
     GameScreen(int widthScreen, int heightScreen, CameraLauncher launcher) {
         cameraLauncher = launcher;
+        IsPermissionGranted = (cameraLauncher != null ? cameraLauncher.isPermissionGranted() : false);
         IsCameraEnabled = false;
         State = "View"; // "Game"
         wasGameMode = false;
@@ -379,24 +380,38 @@ class GameScreen implements Screen {
                         if (BoardNum != -1) {
                             Stack<Board> temp = new Stack<Board>();
                             Stack<Board> tempView = new Stack<Board>();
+                            Stack<DetectionThread> tempThreads = new Stack<DetectionThread>();
                             int boardNum = 0;
                             while (!previousBoards.empty() && BoardNum != boardNum) {
                                 temp.push(previousBoards.pop());
                                 tempView.push(previousBoardsForView.pop());
+                                tempThreads.push(detectionThreads.pop());
                                 boardNum++;
                             }
                             if (!previousBoards.empty()) {
                                 previousBoards.pop();
                                 previousBoardsForView.pop();
+                                detectionThreads.pop();
                             }
                             while (!temp.empty()) {
                                 previousBoards.push(temp.pop());
                                 previousBoardsForView.push(tempView.pop());
+                                detectionThreads.push(tempThreads.pop());
                             }
                             BoardNum = -1;
                         }
                     } else if (xTouchPixel > WORLD_WIDTH / 20 && xTouchPixel < WORLD_WIDTH / 4 + WORLD_WIDTH / 20) {
-                        State = "Camera";
+                        if (!IsPermissionGranted && cameraLauncher != null){
+                            cameraLauncher.askAllPermissions();
+                        }
+                        if (IsPermissionGranted){
+                            State = "Camera";
+                        }
+                        else {
+                            if (cameraLauncher != null){
+                                IsPermissionGranted = cameraLauncher.isPermissionGranted();
+                            }
+                        }
                     }
                 } else if (!HasScrolled && BoardNum != -1 && currentTime > 0.1) {
                     Stack<Board> tempBoards = new Stack<Board>();
@@ -575,7 +590,13 @@ class GameScreen implements Screen {
         if (TouchedAlready && !TouchingNow) {
             if (yTouchPixel > WORLD_HEIGHT / 8 * 7) {
                 if (xTouchPixel > WORLD_WIDTH / 20 && xTouchPixel < WORLD_WIDTH / 4 + WORLD_WIDTH / 20) {
-                    State = "Camera";
+                    if (!IsPermissionGranted && cameraLauncher != null){
+                        cameraLauncher.askAllPermissions();
+                        IsPermissionGranted = cameraLauncher.isPermissionGranted();
+                    }
+                    if (IsPermissionGranted){
+                        State = "Camera";
+                    }
                 } else if (xTouchPixel > (float) (WORLD_WIDTH / 16 * 12) && xTouchPixel < (float) (WORLD_WIDTH / 16 * 12) + (float) (WORLD_HEIGHT / 10)) {
                     State = "View";
                 }
