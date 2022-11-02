@@ -1,206 +1,320 @@
 package com.mygdx.jar;
 
+import static androidx.constraintlayout.motion.utils.Oscillator.TAG;
+
+import android.Manifest;
 import android.app.Activity;
-import android.content.ComponentName;
-import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
-import android.graphics.Matrix;
-import android.icu.text.SimpleDateFormat;
+import android.graphics.ImageFormat;
+import android.graphics.SurfaceTexture;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraDevice;
+import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.Image;
+import android.media.ImageReader;
+import android.media.MediaRecorder;
 import android.net.Uri;
-import android.os.Environment;
-import android.os.Parcelable;
-import android.provider.MediaStore;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.util.Log;
+import android.util.Size;
+import android.util.SparseIntArray;
+import android.view.Surface;
+import android.view.TextureView;
+
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 
 public class CameraHandler {
-    Bitmap myBitmap;
-    Intent data;
-    Uri picUri;
+    private final Activity mActivity;
+    private final TextureView mTextureView;
+    private String mImageFileName;
+    private File mImageFolder;
+    private int mTotalRotation;
+    private Size mPreviewSize;
+    private Size mVideoSize;
+    private Size mImageSize;
+    private ImageReader mImageReader;
+    private CameraDevice mCameraDevice;
+    private CameraDevice.StateCallback mCameraDeviceStateCallback;
+    private CaptureRequest.Builder mCaptureRequestBuilder;
+    private String mCameraId;
+    private CameraCaptureSession mPreviewCaptureSession;
+    private HandlerThread mBackgroundHandlerThread;
+    private Handler mBackgroundHandler;
+    private final TextureView.SurfaceTextureListener mSurfaceTextureListener =
+            new TextureView.SurfaceTextureListener() {
+        @Override
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            setupCamera(width, height);
+        }
 
-    public CameraHandler(PackageManager packageManager){
-        setIntent(packageManager, null);
-    }
+        @Override
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
 
-    public Bitmap getCapturedImage(Intent data, ContentResolver resolver, File getImage){
-        updateBitmap(data, resolver, getImage);
-        return myBitmap;
-    }
+        }
 
-    public void setIntent(PackageManager packageManager, File getImage){
-        data = getPickImageChooserIntent(packageManager, getImage);
-    }
+        @Override
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+            return false;
+        }
 
-    public void updateBitmap(Intent data_, ContentResolver resolver, File getImage){
-        Bitmap bitmap;
-        if (getPickImageResultUri(data_, getImage) != null) {
-            picUri = getPickImageResultUri(data_, getImage);
+        @Override
+        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
 
+        }
+    };
+    private class ImageSaver implements Runnable {
+        private final Image mImage;
+
+        public ImageSaver(Image image) {
+            mImage = image;
+        }
+
+        @Override
+        public void run() {
+            ByteBuffer byteBuffer = mImage.getPlanes()[0].getBuffer();
+            byte[] bytes = new byte[byteBuffer.remaining()];
+            byteBuffer.get(bytes);
+
+            FileOutputStream fileOutputStream = null;
             try {
-                myBitmap = MediaStore.Images.Media.getBitmap(resolver, picUri);
-                myBitmap = rotateImage(myBitmap, 0);
-                myBitmap = getResizedBitmap(myBitmap, 500);
+                fileOutputStream = new FileOutputStream(mImageFileName);
+                fileOutputStream.write(bytes);
             } catch (IOException e) {
                 e.printStackTrace();
+            } finally {
+                mImage.close();
+
+                Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mImageFileName)));
+                mActivity.sendBroadcast(mediaStoreUpdateIntent);
+
+                if(fileOutputStream != null) {
+                    try {
+                        fileOutputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
-        } else {
-            bitmap = (Bitmap) data.getExtras().get("data");
-            myBitmap = bitmap;
+
         }
     }
+    private static class CompareSizeByArea implements Comparator<Size> {
+        @Override
+        public int compare(Size lhs, Size rhs) {
+            return Long.signum( (long)(lhs.getWidth() * lhs.getHeight()) -
+                    (long)(rhs.getWidth() * rhs.getHeight()));
+        }
+    }
+    private final ImageReader.OnImageAvailableListener mOnImageAvailableListener =
+            new ImageReader.OnImageAvailableListener() {
+                @Override
+                public void onImageAvailable(ImageReader reader) {
+                    mBackgroundHandler.post(new ImageSaver(reader.acquireLatestImage()));
+                }
+            };
+    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+    static {
+        ORIENTATIONS.append(Surface.ROTATION_0, 0);
+        ORIENTATIONS.append(Surface.ROTATION_90, 90);
+        ORIENTATIONS.append(Surface.ROTATION_180, 180);
+        ORIENTATIONS.append(Surface.ROTATION_270, 270);
+    }
 
-    /**
-     * Create a chooser intent to select the source to get image from.<br />
-     * The source can be camera's (ACTION_IMAGE_CAPTURE) or gallery's (ACTION_GET_CONTENT).<br />
-     * All possible sources are added to the intent chooser.
-     */
-    public Intent getPickImageChooserIntent(PackageManager packageManager, File getImage) {
-        // Determine Uri of camera image to save.
-        Uri outputFileUri = getCaptureImageOutputUri(getImage);
-
-        List allIntents = new ArrayList();
-
-        // collect all camera intents
-        Intent captureIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-        List listCam = packageManager.queryIntentActivities(captureIntent, 0);
-        for (Object res : listCam) {
-            Intent intent = new Intent(captureIntent);
-            intent.setComponent(new ComponentName(((ResolveInfo)res).activityInfo.packageName, ((ResolveInfo)res).activityInfo.name));
-            intent.setPackage(((ResolveInfo)res).activityInfo.packageName);
-            if (outputFileUri != null) {
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, outputFileUri);
+    public CameraHandler(Activity activity, TextureView textureView){
+        mActivity = activity;
+        mTextureView = textureView;
+        mCameraDeviceStateCallback = new CameraDevice.StateCallback() {
+            @Override
+            public void onOpened(CameraDevice camera) {
+                mCameraDevice = camera;
+                startPreview();
             }
-            allIntents.add(intent);
-        }
 
-        // collect all gallery intents
-        Intent galleryIntent = new Intent(Intent.ACTION_GET_CONTENT);
-        galleryIntent.setType("image/*");
-        List listGallery = packageManager.queryIntentActivities(galleryIntent, 0);
-        for (Object res : listGallery) {
-            Intent intent = new Intent(galleryIntent);
-            intent.setComponent(new ComponentName(((ResolveInfo)res).activityInfo.packageName, ((ResolveInfo)res).activityInfo.name));
-            intent.setPackage(((ResolveInfo)res).activityInfo.packageName);
-            allIntents.add(intent);
-        }
+            @Override
+            public void onDisconnected(@NonNull CameraDevice cameraDevice) {
+                closeCamera();
+            }
 
-        // the main intent is the last in the list (fucking android) so pickup the useless one
-        Intent mainIntent = (Intent) allIntents.get(allIntents.size() - 1);
-        for (Object intent : allIntents) {
-            if (Objects.requireNonNull(((Intent) intent).getComponent()).getClassName().equals("com.android.documentsui.DocumentsActivity")) {
-                mainIntent = (Intent) intent;
-                break;
+            @Override
+            public void onError(@NonNull CameraDevice cameraDevice, int i) {
+                closeCamera();
+            }
+        };
+    }
+
+    public void start() {
+        if (mTextureView != null){
+            startBackgroundThread();
+            if(mTextureView.isAvailable()) {
+                setupCamera(mTextureView.getWidth(), mTextureView.getHeight());
+            } else {
+                mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
             }
         }
-        allIntents.remove(mainIntent);
-
-        // Create a chooser from the main intent
-        Intent chooserIntent = Intent.createChooser(mainIntent, "Select source");
-
-        // Add all other intents
-        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, allIntents.toArray(new Parcelable[allIntents.size()]));
-
-        return chooserIntent;
     }
 
-    private static Bitmap rotateImage(Bitmap img, int degree) {
-        Matrix matrix = new Matrix();
-        matrix.postRotate(degree);
-        Bitmap rotatedImg = Bitmap.createBitmap(img, 0, 0, img.getWidth(), img.getHeight(), matrix, true);
-        img.recycle();
-        return rotatedImg;
+    public int getTextureViewWidth() {
+        return mTextureView.getWidth();
     }
 
-    public Bitmap getResizedBitmap(Bitmap image, int maxSize) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-
-        float bitmapRatio = (float) width / (float) height;
-        if (bitmapRatio > 0) {
-            width = maxSize;
-            height = (int) (width / bitmapRatio);
-        } else {
-            height = maxSize;
-            width = (int) (height * bitmapRatio);
-        }
-        return Bitmap.createScaledBitmap(image, width, height, true);
+    public int getTextureViewHeight() {
+        return mTextureView.getHeight();
     }
 
-    /**
-     * Get URI to image received from capture by camera.
-     */
-    private Uri getCaptureImageOutputUri(File getImage) {
-        Uri outputFileUri = null;
-        if (getImage != null) {
-            outputFileUri = Uri.fromFile(new File(getImage.getPath(), "profile.png"));
-        }
-        return outputFileUri;
+    public Bitmap getBitmap() {
+        return mTextureView.getBitmap();
     }
 
-    /**
-     * Get the URI of the selected image from .<br />
-     * Will return the correct URI for camera and gallery image.
-     *
-     * @param data the returned data of the activity result
-     */
-    public Uri getPickImageResultUri(Intent data, File getImage) {
-        boolean isCamera = true;
-        if (data != null) {
-            String action = data.getAction();
-            isCamera = action != null && action.equals(MediaStore.ACTION_IMAGE_CAPTURE);
-        }
-        System.out.println("Is Camera: " + isCamera);
-
-        return isCamera ? getCaptureImageOutputUri(getImage) : data.getData();
-    }
-
-    private String storeImage(Activity activity, Bitmap image) {
-        File pictureFile = getOutputMediaFile(activity);
-        if (pictureFile == null) {
-            return null;
-        }
+    public void setupCamera(int width, int height) {
+        CameraManager cameraManager = (CameraManager) mActivity.getSystemService(Context.CAMERA_SERVICE);
         try {
-            if (image != null){
-                FileOutputStream fos = new FileOutputStream(pictureFile);
-                image.compress(Bitmap.CompressFormat.PNG, 90, fos);
-                fos.flush();
-                fos.close();
+            for (String cameraId : cameraManager.getCameraIdList()) {
+                CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId);
+                if (cameraCharacteristics.get(CameraCharacteristics.LENS_FACING) ==
+                        CameraCharacteristics.LENS_FACING_FRONT) {
+                    continue;
+                }
+                StreamConfigurationMap map = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                int deviceOrientation = mActivity.getWindowManager().getDefaultDisplay().getRotation();
+                mTotalRotation = sensorToDeviceRotation(cameraCharacteristics, deviceOrientation);
+                boolean swapRotation = mTotalRotation == 90 || mTotalRotation == 270;
+                int rotatedWidth = width;
+                int rotatedHeight = height;
+                if (swapRotation) {
+                    rotatedWidth = height;
+                    rotatedHeight = width;
+                }
+                mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), rotatedWidth, rotatedHeight);
+                mVideoSize = chooseOptimalSize(map.getOutputSizes(MediaRecorder.class), rotatedWidth, rotatedHeight);
+                mImageSize = chooseOptimalSize(map.getOutputSizes(ImageFormat.JPEG), rotatedWidth, rotatedHeight);
+                mImageReader = ImageReader.newInstance(mImageSize.getWidth(), mImageSize.getHeight(), ImageFormat.JPEG, 1);
+                mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
+                mCameraId = cameraId;
+                connectCamera();
+                return;
             }
-            else{
-                System.out.println("Bitmap Image Is NULL");
-            }
-        } catch (IOException e) {
+        } catch (CameraAccessException e) {
             e.printStackTrace();
-            System.out.println("Error Saving Picture");
         }
-        return pictureFile.getPath();
     }
 
-    private  File getOutputMediaFile(Activity activity) {
-        File mediaStorageDir = new File(Environment.getExternalStorageDirectory()
-                + "/Android/data/"
-                + activity.getApplicationContext().getPackageName()
-                + "/CameraStream");
+    public static int sensorToDeviceRotation(CameraCharacteristics cameraCharacteristics, int deviceOrientation) {
+        int sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
+        deviceOrientation = ORIENTATIONS.get(deviceOrientation);
+        return (sensorOrientation + deviceOrientation + 360) % 360;
+    }
 
-        if (!mediaStorageDir.exists()) {
-            if (!mediaStorageDir.mkdirs()) {
-                System.out.println("System return NULL");
-                return null;
+    public void connectCamera() {
+        CameraManager cameraManager = (CameraManager) mActivity.getSystemService(Context.CAMERA_SERVICE);
+        try {
+            if (ActivityCompat.checkSelfPermission(mActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
+            cameraManager.openCamera(mCameraId, mCameraDeviceStateCallback, mBackgroundHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void startPreview() {
+        SurfaceTexture surfaceTexture = mTextureView.getSurfaceTexture();
+        surfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+        Surface previewSurface = new Surface(surfaceTexture);
+
+        try {
+            mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            mCaptureRequestBuilder.addTarget(previewSurface);
+
+            mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, mImageReader.getSurface()),
+                    new CameraCaptureSession.StateCallback() {
+                        @Override
+                        public void onConfigured(CameraCaptureSession session) {
+                            Log.d(TAG, "onConfigured: startPreview");
+                            mPreviewCaptureSession = session;
+                            try {
+                                mPreviewCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(),
+                                        null, mBackgroundHandler);
+                            } catch (CameraAccessException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        @Override
+                        public void onConfigureFailed(CameraCaptureSession session) {
+                            Log.d(TAG, "onConfigureFailed: startPreview");
+
+                        }
+                    }, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void startBackgroundThread() {
+        mBackgroundHandlerThread = new HandlerThread("Camera2VideoImage");
+        mBackgroundHandlerThread.start();
+        mBackgroundHandler = new Handler(mBackgroundHandlerThread.getLooper());
+    }
+
+    public void stopBackgroundThread() {
+        if (mBackgroundHandlerThread != null){
+            mBackgroundHandlerThread.quitSafely();
+            try {
+                mBackgroundHandlerThread.join();
+                mBackgroundHandlerThread = null;
+                mBackgroundHandler = null;
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
-        String timeStamp = new SimpleDateFormat("ddMMyyyy_HHmm").format(new Date());
-        String mImageName = "MI_" + timeStamp + ".png";
-        File mediaFile = new File(mediaStorageDir.getPath() + File.separator + mImageName);
+    }
 
-        return mediaFile;
+    public static Size chooseOptimalSize(Size[] choices, int width, int height) {
+        List<Size> bigEnough = new ArrayList<Size>();
+        for(Size option : choices) {
+            if(width != 0 && option.getHeight() == option.getWidth() * height / width &&
+                    option.getWidth() >= width && option.getHeight() >= height) {
+                bigEnough.add(option);
+            }
+        }
+        if(bigEnough.size() > 0) {
+            return Collections.min(bigEnough, new CameraHandler.CompareSizeByArea());
+        } else {
+            return choices[0];
+        }
+    }
+
+    public void closeCamera(){
+        if (mCameraDevice != null) {
+            mCameraDevice.close();
+            mCameraDevice = null;
+        }
     }
 }
