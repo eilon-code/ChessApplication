@@ -10,7 +10,7 @@ public interface CameraLauncher {
     boolean isPermissionGranted();
 
     Texture getCapturedImage();
-
+    
     void captureImage();
 
     void openCamera();

@@ -175,17 +175,17 @@ public class PositionCheck {
     }
 
     public boolean detect_SuicideCheckmateIn_2_Moves(){
-        Move[] moves = new Move[6];
+        Move[] moves = new Move[8];
         return detect_SuicideCheckmateIn_X_Moves(2, Is_white_turn, moves);
     }
 
     public boolean detect_CheckmateHelperIn_2_Moves(){
-        Move[] moves = new Move[6];
+        Move[] moves = new Move[8];
         return detect_CheckmateHelp_In_X_Moves(2, Is_white_turn, moves);
     }
 
     public boolean detect_PatIn_2_Moves(){
-        Move[] moves = new Move[6];
+        Move[] moves = new Move[8];
         return detect_PatIn_X_Moves(2, Is_white_turn, moves);
     }
 
@@ -243,6 +243,9 @@ public class PositionCheck {
     }
 
     private boolean detect_PatIn_X_Moves(int x, boolean is_white_turn, Move[] moves){
+        if (x < 0){
+            return false;
+        }
         Move[] current_legal_moves = Get_all_legal_Group_moves();
         Group_of_pieces group = Is_white_turn ? White_Pieces : Black_Pieces;
         int legal_moves = 0;
@@ -255,9 +258,11 @@ public class PositionCheck {
         if (x == 0){
             Point king = group.get_king_point();
             boolean king_in_danger = (king != null && king.equals(KingAtDanger));
-            return legal_moves == 0 && !king_in_danger;
+            if (legal_moves == 0 && !king_in_danger){
+                return true;
+            }
         }
-        if (legal_moves == 0){
+        else if (legal_moves == 0){
             return false;
         }
 
@@ -266,10 +271,10 @@ public class PositionCheck {
             if (move == null){
                 continue;
             }
-            moves[6 - 2*x - ((is_white_turn != Is_white_turn) ? 1 : 0)] = move;
+            moves[8 - 2*x - ((is_white_turn != Is_white_turn) ? 1 : 0)] = move;
 
             Play_move(move);
-            boolean isPass = detect_PatIn_X_Moves(x - ((is_white_turn != Is_white_turn) ? 1 : 0), is_white_turn, moves);
+            boolean isPass = detect_CheckmateIn_X_Moves(x - ((is_white_turn == Is_white_turn) ? 1 : 0), is_white_turn, moves);
             Reverse_move();
 
             if ((is_white_turn != Is_white_turn) && !isPass){
@@ -279,7 +284,7 @@ public class PositionCheck {
                 hasBeenTrue = true;
                 if (is_white_turn == Is_white_turn){
                     System.out.println("//////");
-                    System.out.println("Pat:");
+                    System.out.println("Draw:");
                     for (Move move_solution : moves){
                         if (move_solution != null){
                             System.out.println(move_solution.Type_of_piece + ": (" +
@@ -298,55 +303,6 @@ public class PositionCheck {
     private boolean detect_SuicideCheckmateIn_X_Moves(int x, boolean is_white_turn, Move[] moves){
         Move[] current_legal_moves = Get_all_legal_Group_moves();
         Group_of_pieces group = Is_white_turn ? White_Pieces : Black_Pieces;
-        Group_of_pieces other_group = Is_white_turn ? Black_Pieces : White_Pieces;
-        int legal_moves = 0;
-        for (Move current_legal_move : current_legal_moves) {
-            if (current_legal_move != null) {
-                legal_moves++;
-            }
-        }
-
-        if (x == 0 && is_white_turn != Is_white_turn){
-            Point king = group.get_king_point();
-            boolean king_in_danger = (king != null && king.equals(KingAtDanger));
-            if (legal_moves == 0 && king_in_danger){
-                System.out.println("//////");
-                System.out.println("Win:");
-                for (Move move : moves){
-                    if (move != null){
-                        System.out.println(move.Type_of_piece + ": (" + move.Current_row + ", " + move.Current_column + ") to (" + move.Next_row + ", " + move.Next_column + ")");
-                    }
-                }
-                System.out.println("//////");
-            }
-            return legal_moves == 0 && king_in_danger;
-        }
-
-        boolean hasBeenTrue = false;
-        for (Move move : current_legal_moves){
-            if (move == null){
-                continue;
-            }
-            moves[5 - 2*x - ((is_white_turn != Is_white_turn) ? 1 : 0)] = move;
-
-            Play_move(move);
-            boolean isPass = detect_SuicideCheckmateIn_X_Moves(x - ((is_white_turn == Is_white_turn) ? 1 : 0), is_white_turn, moves);
-            Reverse_move();
-
-            if ((is_white_turn != Is_white_turn) && !isPass){
-                return false;
-            }
-            if (isPass){
-                hasBeenTrue = true;
-            }
-        }
-        return hasBeenTrue;
-    }
-
-    private boolean detect_CheckmateHelp_In_X_Moves(int x, boolean is_white_turn, Move[] moves){
-        Move[] current_legal_moves = Get_all_legal_Group_moves();
-        Group_of_pieces group = Is_white_turn ? White_Pieces : Black_Pieces;
-        Group_of_pieces other_group = Is_white_turn ? Black_Pieces : White_Pieces;
         int legal_moves = 0;
         for (Move current_legal_move : current_legal_moves) {
             if (current_legal_move != null) {
@@ -357,17 +313,10 @@ public class PositionCheck {
         if (x == 0){
             Point king = group.get_king_point();
             boolean king_in_danger = (king != null && king.equals(KingAtDanger));
-            if (legal_moves == 0 && king_in_danger){
-                System.out.println("//////");
-                System.out.println("Win:");
-                for (Move move : moves){
-                    if (move != null){
-                        System.out.println(move.Type_of_piece + ": (" + move.Current_row + ", " + move.Current_column + ") to (" + move.Next_row + ", " + move.Next_column + ")");
-                    }
-                }
-                System.out.println("//////");
-            }
             return legal_moves == 0 && king_in_danger;
+        }
+        if (legal_moves == 0){
+            return false;
         }
 
         boolean hasBeenTrue = false;
@@ -375,17 +324,79 @@ public class PositionCheck {
             if (move == null){
                 continue;
             }
-            moves[4 - 2*x - ((is_white_turn != Is_white_turn) ? 1 : 0)] = move;
+            moves[8 - 2*x - ((is_white_turn != Is_white_turn) ? 1 : 0)] = move;
 
             Play_move(move);
-            boolean isPass = detect_CheckmateHelp_In_X_Moves(x - ((is_white_turn != Is_white_turn) ? 1 : 0), is_white_turn, moves);
+            boolean isPass = detect_CheckmateIn_X_Moves(x - ((is_white_turn == Is_white_turn) ? 1 : 0), is_white_turn, moves);
             Reverse_move();
 
+            if ((is_white_turn != Is_white_turn) && !isPass){
+                return false;
+            }
             if (isPass){
                 hasBeenTrue = true;
+                if (is_white_turn == Is_white_turn){
+                    System.out.println("//////");
+                    System.out.println("Win:");
+                    for (Move move_solution : moves){
+                        if (move_solution != null){
+                            System.out.println(move_solution.Type_of_piece + ": (" +
+                                    move_solution.Current_row + ", " + move_solution.Current_column + ") to (" +
+                                    move_solution.Next_row + ", " + move_solution.Next_column + ")");
+                        }
+                    }
+                    System.out.println("//////");
+                    return true;
+                }
             }
         }
         return hasBeenTrue;
+    }
+
+    private boolean detect_CheckmateHelp_In_X_Moves(int x, boolean is_white_turn, Move[] moves){
+        Move[] current_legal_moves = Get_all_legal_Group_moves();
+        Group_of_pieces group = Is_white_turn ? White_Pieces : Black_Pieces;
+        int legal_moves = 0;
+        for (Move current_legal_move : current_legal_moves) {
+            if (current_legal_move != null) {
+                legal_moves++;
+            }
+        }
+
+        if (x == 0){
+            Point king = group.get_king_point();
+            boolean king_in_danger = (king != null && king.equals(KingAtDanger));
+            return legal_moves == 0 && king_in_danger;
+        }
+        if (legal_moves == 0){
+            return false;
+        }
+
+        for (Move move : current_legal_moves){
+            if (move == null){
+                continue;
+            }
+            moves[8 - 2*x - ((is_white_turn != Is_white_turn) ? 1 : 0)] = move;
+
+            Play_move(move);
+            boolean isPass = detect_CheckmateIn_X_Moves(x - ((is_white_turn != Is_white_turn) ? 1 : 0), is_white_turn, moves);
+            Reverse_move();
+
+            if (isPass){
+                System.out.println("//////");
+                System.out.println("Win:");
+                for (Move move_solution : moves){
+                    if (move_solution != null){
+                        System.out.println(move_solution.Type_of_piece + ": (" +
+                                move_solution.Current_row + ", " + move_solution.Current_column + ") to (" +
+                                move_solution.Next_row + ", " + move_solution.Next_column + ")");
+                    }
+                }
+                System.out.println("//////");
+                return true;
+            }
+        }
+        return false;
     }
 
     public void Play_move(Move move) {

@@ -7,6 +7,7 @@ public class Board {
     public static int BoardSize;
     public static final String NonTitle = "התאם כותרת לעמדה";
     public static final String TitleNotFit = "הכותרת לא מתאימה לעמדה";
+    public static final String TitleCheck = "בודק התאמת כותרת לעמדה";
 
     // 2D array of type Cell
     public Cell[][] The_Grid;

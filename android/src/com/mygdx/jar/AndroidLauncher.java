@@ -1,16 +1,23 @@
 package com.mygdx.jar;
 
 import android.Manifest;
+import android.content.Context;
+import android.content.ContextParams;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.SurfaceTexture;
 import android.net.Uri;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.view.Surface;
+import android.view.SurfaceView;
 import android.view.TextureView;
 import android.widget.Toast;
 
@@ -23,6 +30,9 @@ import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.TextureData;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.mygdx.jar.graphicsObjects.ScrollingGame;
 import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
 
@@ -41,10 +51,6 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 
 	private static Bitmap capturedImage;
 	private Texture cameraFootage;
-	private ImageCapture imgCap;
-
-	private CameraHandlerThread mThread = null;
-
 	private CameraHandler cameraHandler;
 
 	@Override
@@ -54,11 +60,21 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 		initialize(new ScrollingGame(this), config);
 		permissionManager = PermissionManager.getInstance(this);
 
-		setContentView(R.layout.activity_main);
-		TextureView textureView = (TextureView) findViewById(R.id.textureView);
-//		TextureView textureView = new TextureView(this);
-		cameraHandler = new CameraHandler(this, textureView);
+		///////////////////////////////////////////////////////////////////
+		// Problem starts here:
+
+//		setContentView(R.layout.activity_main);
+//		TextureView textureView = findViewById(R.id.textureView);
+		TextureView textureView = new TextureView(this);
+//		textureView.setSurfaceTextureListener((TextureView.SurfaceTextureListener) this);
+
+		Surface surface = null;//new SurfaceView(getContext()).getHolder().getSurface();
+		cameraHandler = new CameraHandler(this, textureView, surface);
+//		setContentView(textureView);
+
+		///////////////////////////////////////////////////////////////////
 		askAllPermissions();
+		openCamera();
 	}
 
 	@Override
@@ -78,7 +94,15 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 
 	@Override
 	public Texture getCapturedImage() {
-		// captureImage();
+//		// captureImage();
+//		SurfaceView surfaceView = cameraHandler.getSurfaceView();
+//		if (surfaceView.getHolder() == null || surfaceView.getHolder().getSurface() == null){
+//			return null;
+//		}
+//		TextureData data = (TextureData) surfaceView.getHolder().getSurface();
+//		Texture texture = new Texture(data);
+////		texture = new Texture((TextureData) surfaceView.getHolder().getSurface());
+//		return texture;
 		return cameraFootage;
 	}
 
@@ -86,19 +110,21 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 		Gdx.app.postRunnable(new Runnable() {
 			@Override
 			public void run() {
-				// capturedImage
-				Bitmap image = cameraHandler.getBitmap();
-				if (image != null && image.getByteCount() != 0) {
+				System.out.println("Looking at image");
+				if (capturedImage != null && capturedImage.getByteCount() != 0) {
 					Texture tex = new Texture(
-							image.getWidth(),
-							image.getHeight(),
+							capturedImage.getWidth(),
+							capturedImage.getHeight(),
 							Pixmap.Format.RGBA8888);
 					GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex.getTextureObjectHandle());
-					GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, image, 0);
+					GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, capturedImage, 0);
 					GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
-					image.recycle();
+					capturedImage.recycle();
 					// now you have the texture to do whatever you want
 					cameraFootage = tex;
+				}
+				else{
+					System.out.println("Image is FuCKing NULL !@@#!@$!$");
 				}
 			}
 		});
@@ -114,6 +140,8 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 //		else {
 //			System.out.println("No Permission");
 //		}
+		capturedImage = cameraHandler.getBitmap();
+		syncFootage();
 	}
 
 	@Override

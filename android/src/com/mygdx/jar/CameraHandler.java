@@ -27,6 +27,7 @@ import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
+import android.view.SurfaceView;
 import android.view.TextureView;
 
 import androidx.annotation.NonNull;
@@ -40,11 +41,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 
 public class CameraHandler {
     private final Activity mActivity;
     private final TextureView mTextureView;
+    private final Surface mSurface;
     private String mImageFileName;
     private File mImageFolder;
     private int mTotalRotation;
@@ -140,9 +143,10 @@ public class CameraHandler {
         ORIENTATIONS.append(Surface.ROTATION_270, 270);
     }
 
-    public CameraHandler(Activity activity, TextureView textureView){
+    public CameraHandler(Activity activity, TextureView textureView, Surface surface){
         mActivity = activity;
         mTextureView = textureView;
+        mSurface = surface;
         mCameraDeviceStateCallback = new CameraDevice.StateCallback() {
             @Override
             public void onOpened(CameraDevice camera) {
@@ -181,7 +185,7 @@ public class CameraHandler {
         return mTextureView.getHeight();
     }
 
-    public Bitmap getBitmap() {
+    public Bitmap getBitmap(){
         return mTextureView.getBitmap();
     }
 
@@ -244,34 +248,43 @@ public class CameraHandler {
     }
 
     public void startPreview() {
-        SurfaceTexture surfaceTexture = mTextureView.getSurfaceTexture();
-        surfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
-        Surface previewSurface = new Surface(surfaceTexture);
+        LinkedList<Surface> cameraTargets = new LinkedList<Surface>();
+        if (mTextureView != null && mTextureView.getSurfaceTexture() != null){
+            SurfaceTexture surfaceTexture = mTextureView.getSurfaceTexture();
+            surfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+//            Surface previewSurface = new Surface(surfaceTexture);
+            cameraTargets.add(new Surface(surfaceTexture));
+        }
+        if (mSurface != null){
+            cameraTargets.add(mSurface);
+        }
 
         try {
             mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            mCaptureRequestBuilder.addTarget(previewSurface);
+            for (Surface surface : cameraTargets){
+                mCaptureRequestBuilder.addTarget(surface);
 
-            mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, mImageReader.getSurface()),
-                    new CameraCaptureSession.StateCallback() {
-                        @Override
-                        public void onConfigured(CameraCaptureSession session) {
-                            Log.d(TAG, "onConfigured: startPreview");
-                            mPreviewCaptureSession = session;
-                            try {
-                                mPreviewCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(),
-                                        null, mBackgroundHandler);
-                            } catch (CameraAccessException e) {
-                                e.printStackTrace();
+                mCameraDevice.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()),
+                        new CameraCaptureSession.StateCallback() {
+                            @Override
+                            public void onConfigured(CameraCaptureSession session) {
+                                Log.d(TAG, "onConfigured: startPreview");
+                                mPreviewCaptureSession = session;
+                                try {
+                                    mPreviewCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(),
+                                            null, mBackgroundHandler);
+                                } catch (CameraAccessException e) {
+                                    e.printStackTrace();
+                                }
                             }
-                        }
 
-                        @Override
-                        public void onConfigureFailed(CameraCaptureSession session) {
-                            Log.d(TAG, "onConfigureFailed: startPreview");
+                            @Override
+                            public void onConfigureFailed(CameraCaptureSession session) {
+                                Log.d(TAG, "onConfigureFailed: startPreview");
 
-                        }
-                    }, null);
+                            }
+                        }, null);
+            }
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }

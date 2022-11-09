@@ -20,6 +20,9 @@ import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
 
 import java.util.Stack;
 
+import sun.java2d.Surface;
+import sun.java2d.SurfaceData;
+
 class GameScreen implements Screen {
     private static final String ABC = "אבגדהוזחטיכלמנסעפצקרשתםןךףץ";
     private String[] CurrentTitlesList;
@@ -311,6 +314,7 @@ class GameScreen implements Screen {
                 if (CameraStream == null){
                     System.out.println("Something went wrong!!!!!!!!!!!!!");
                 }
+                cameraLauncher.captureImage();
             }
             else{
                 if (wasCameraEnabled){
@@ -320,6 +324,7 @@ class GameScreen implements Screen {
             if (isGalleryEnabled) {
                 cameraLauncher.openGallery();
             }
+            CameraStream = cameraLauncher.getCapturedImage();
             CameraStream = cameraLauncher.getCapturedImage();
         }
     }
@@ -454,14 +459,16 @@ class GameScreen implements Screen {
                     (int) BoardDownLimit,
                     (int) SquaredSizeOfBoard, (int) SquaredSizeOfBoard);
         }
+
         TouchedAlready = TouchingNow;
         TouchingNow = Gdx.input.isTouched();
         xTouchPixel = Gdx.input.getX();
         yTouchPixel = Gdx.input.getY();
 
+        boolean wasChoosingTitle = ChoosingTitle;
         detectInputChoosingTitle(WORLD_WIDTH / 2, WORLD_HEIGHT / 16 * 15, WORLD_HEIGHT / 40);
 
-        if (!ChoosingTitle) {
+        if (!(ChoosingTitle || wasChoosingTitle)) {
             if (!chessGame.GameOver) {
                 // render the option of spinning screen
                 renderSpinningScreenOption();
@@ -689,6 +696,7 @@ class GameScreen implements Screen {
         Stack<Board> tempBoards = new Stack<Board>();
         Stack<Board> tempBoardsView = new Stack<Board>();
 
+        String title = "";
         int boardNum = 0;
         while (!detectionThreads.empty() && BoardNum != boardNum) {
             tempThreads.push(detectionThreads.pop());
@@ -699,23 +707,29 @@ class GameScreen implements Screen {
         if (!previousBoards.empty()){
             previousBoards.peek().Title = previousBoardsForView.peek().Title;
             Position.Chess_Board.Title = previousBoards.peek().Title;
+            title = detectionThreads.peek().getTitle();
         }
         while (!tempThreads.empty()) {
             detectionThreads.push(tempThreads.pop());
             previousBoards.push(tempBoards.pop());
             previousBoardsForView.push(tempBoardsView.pop());
         }
-        CurrentTitlesList = new String[ChoosingTitle ? (TitlesList.length + (Position.Chess_Board.Title.equals(Board.NonTitle) ? 1 : 0)) : 1];
+        CurrentTitlesList = new String[ChoosingTitle ? (TitlesList.length + (Position.Chess_Board.Title.equals(Board.NonTitle) ? 1 : 0)) : (Position.Chess_Board.Title.equals(Board.TitleCheck) ? 2 : 1)];
         CurrentTitlesList[0] = Position.Chess_Board.Title;
-        boolean hasSeenTitle = false;
-        for (int i = 1; i < CurrentTitlesList.length; i++){
-            if ((CurrentTitlesList[0]).equals(TitlesList[i - 1])){
-                hasSeenTitle = true;
-            }
-            CurrentTitlesList[i] = TitlesList[i - (hasSeenTitle ? 0 : 1)];
+        if (Position.Chess_Board.Title.equals(Board.TitleCheck)){
+            CurrentTitlesList[1] = title;
         }
-        float[] totalWidth = new float[CurrentTitlesList.length];
+        else{
+            boolean hasSeenTitle = false;
+            for (int i = 1; i < CurrentTitlesList.length; i++){
+                if ((CurrentTitlesList[0]).equals(TitlesList[i - 1])){
+                    hasSeenTitle = true;
+                }
+                CurrentTitlesList[i] = TitlesList[i - (hasSeenTitle ? 0 : 1)];
+            }
+        }
 
+        float[] totalWidth = new float[CurrentTitlesList.length];
         float wordsSpace = 20;
         float lettersSpace = 6;
         float maxWidth = 0;
