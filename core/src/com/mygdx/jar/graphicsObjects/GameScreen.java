@@ -567,8 +567,10 @@ class GameScreen implements Screen {
                     posX = (int) ((xTouchPixel - left_x) / cellSize);
                     posY = 7 - (int) ((yTouchPixel - (up_y + cellSize/2)) / cellSize);
                     Cell prevCell = new Cell(EditBoard.The_Grid[ActivePiece.X][ActivePiece.Y]);
-                    EditBoard.The_Grid[posX][posY] = new Cell(posX, posY, true,
-                            prevCell.Color_piece, prevCell.Type);
+                    if ((!prevCell.Type.equals("Pawn")) || (posY != 0 && posY != 7)){
+                        EditBoard.The_Grid[posX][posY] = new Cell(posX, posY, true,
+                                prevCell.Color_piece, prevCell.Type);
+                    }
                 }
                 if (posX != ActivePiece.X || posY != ActivePiece.Y){
                     EditBoard.The_Grid[ActivePiece.X][ActivePiece.Y] =
@@ -695,6 +697,9 @@ class GameScreen implements Screen {
                     } else {
                         System.out.println("draw");
                     }
+                    if (IsSpinning && (!Position.Is_white_turn ^ direction == 1)) {
+                        direction *= -1;
+                    }
                 }
             } else {
                 // game ended
@@ -702,6 +707,9 @@ class GameScreen implements Screen {
                 if (detectInputReGame()) {
                     chessGame.ReverseAllMoves();
                     chessGame.ClearHistory();
+                    if (IsSpinning && (Position.Is_white_turn ^ direction == 1)) {
+                        direction *= -1;
+                    }
                 }
             }
 
@@ -895,9 +903,6 @@ class GameScreen implements Screen {
         CurrentTitlesList = new String[ChoosingTitle ? (TitlesList.length + (Position.Chess_Board.Title.equals(Board.NonTitle) ? 1 : 0)) : ((Position.Chess_Board.Title.equals(Board.TitleCheck) && !titleFit) ? 2 : 1)];
         CurrentTitlesList[0] = Position.Chess_Board.Title;
         if (Position.Chess_Board.Title.equals(Board.TitleCheck)){
-            if (!title.equals(Board.TitleNotFit)){
-                CurrentTitlesList[0] = title;
-            }
             CurrentTitlesList[1] = title;
         }
         else{

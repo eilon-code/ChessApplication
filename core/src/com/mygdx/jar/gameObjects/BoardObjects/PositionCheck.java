@@ -21,7 +21,7 @@ public class PositionCheck {
     private final Stack<Move> RecordedMoves;
 
     public PositionCheck(Board chess_board) {
-        Chess_Board = chess_board; // new Board(chess_board); // here the magic happens
+        Chess_Board = chess_board; // here the magic happens
         White_Pieces = new Group_of_pieces(chess_board, "white");
         Black_Pieces = new Group_of_pieces(chess_board, "black");
         Is_white_turn = chess_board.IsWhiteTurn;
@@ -34,7 +34,7 @@ public class PositionCheck {
     {
         for (Move moves_option : moves_options) {
             if (moves_option != null) {
-                if (moves_option.Next_row == king_x && moves_option.Next_column == king_y) {
+                if (moves_option.Next_row == king_x && moves_option.Next_column == king_y && !moves_option.Castle) {
                     return true;
                 }
             }
@@ -161,7 +161,7 @@ public class PositionCheck {
 
     public boolean detect_CheckmateIn_2_Moves(){
         Move[] moves = new Move[8];
-        return detect_CheckmateIn_X_Moves(2, Is_white_turn, moves);
+        return detect_CheckmateIn_X_Moves(2, Position.Is_white_turn, moves);
     }
 
     public boolean detect_CheckmateIn_3_Moves(){
@@ -181,7 +181,7 @@ public class PositionCheck {
 
     public boolean detect_CheckmateHelperIn_2_Moves(){
         Move[] moves = new Move[8];
-        return detect_CheckmateHelp_In_X_Moves(2, Is_white_turn, moves);
+        return detect_CheckmateHelp_In_X_Moves(2, Position.Is_white_turn, moves);
     }
 
     public boolean detect_PatIn_2_Moves(){
@@ -191,7 +191,7 @@ public class PositionCheck {
 
     private boolean detect_CheckmateIn_X_Moves(int x, boolean is_white_turn, Move[] moves){
         Move[] current_legal_moves = Get_all_legal_Group_moves();
-        Group_of_pieces group = Is_white_turn ? White_Pieces : Black_Pieces;
+        Group_of_pieces group = Chess_Board.IsWhiteTurn ? White_Pieces : Black_Pieces;
         int legal_moves = 0;
         for (Move current_legal_move : current_legal_moves) {
             if (current_legal_move != null) {
@@ -201,7 +201,8 @@ public class PositionCheck {
 
         if (x == 0){
             Point king = group.get_king_point();
-            boolean king_in_danger = (king != null && king.equals(KingAtDanger));
+            Move[] opponentThreat = Get_all_Group_moves(!Is_white_turn);
+            boolean king_in_danger = (king != null && king_in_danger(king.X, king.Y, opponentThreat)); // king.equals(KingAtDanger));
             return legal_moves == 0 && king_in_danger;
         }
         if (legal_moves == 0){
@@ -235,7 +236,6 @@ public class PositionCheck {
                         }
                     }
                     System.out.println("//////");
-                    return true;
                 }
             }
         }
