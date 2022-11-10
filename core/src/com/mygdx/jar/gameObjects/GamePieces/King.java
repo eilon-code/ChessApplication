@@ -164,7 +164,9 @@ public class King extends Piece
             {
                 if (group.Group_Pieces[piece_num] != null && !group.Group_Pieces[piece_num].IsDeleted)
                 {
-                    if (group.Group_Pieces[piece_num].Type.equals("Rook") && !group.Group_Pieces[piece_num].HasBeenMoved())
+                    if (group.Group_Pieces[piece_num].Type.equals("Rook") &&
+                            !group.Group_Pieces[piece_num].HasBeenMoved() &&
+                            group.Group_Pieces[piece_num].Column_Number == Column_Number)
                     {
                         boolean castle_with_current_rook_possible = true;
 

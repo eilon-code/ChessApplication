@@ -13,15 +13,14 @@ import com.badlogic.gdx.Screen;
 import com.mygdx.jar.ChessGame;
 import com.mygdx.jar.CameraLauncher;
 import com.mygdx.jar.gameObjects.BoardObjects.Board;
+import com.mygdx.jar.gameObjects.BoardObjects.Cell;
 import com.mygdx.jar.gameObjects.BoardObjects.DetectionThread;
 import com.mygdx.jar.gameObjects.BoardObjects.Point;
 import com.mygdx.jar.gameObjects.BoardObjects.Position;
+import com.mygdx.jar.gameObjects.GamePieces.Piece;
 import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
 
 import java.util.Stack;
-
-import sun.java2d.Surface;
-import sun.java2d.SurfaceData;
 
 class GameScreen implements Screen {
     private static final String ABC = "אבגדהוזחטיכלמנסעפצקרשתםןךףץ";
@@ -44,6 +43,9 @@ class GameScreen implements Screen {
 
     private final Texture GrayBackgroundForPawnWinning;
     private final Texture BlackBackgroundForPawnWinning;
+    private final Texture XIcon;
+    private final Texture VIcon;
+    private final Texture PlusIcon;
 
     private final Texture TrashCan;
     private final Texture CameraImg;
@@ -93,7 +95,6 @@ class GameScreen implements Screen {
     private Point ClickedPiece;
     private float xTouchPixel;
     private float yTouchPixel;
-    private boolean IsActivePiece;
     private float currentTime = 0;
     private boolean IsSecondTouch;
     private float ViewOffset;
@@ -104,6 +105,7 @@ class GameScreen implements Screen {
     private boolean wasPawnWin = false;
     private boolean hasBeenUntouched;
     private boolean ChoosingTitle;
+    private Board EditBoard;
 
     // game types
     private boolean IsFisherChess;
@@ -119,6 +121,7 @@ class GameScreen implements Screen {
     private boolean IsCameraEnabled;
     private boolean wasGameMode;
     private boolean IsPermissionGranted;
+    private Point ActivePiece;
 
     GameScreen(int widthScreen, int heightScreen, CameraLauncher launcher) {
         cameraLauncher = launcher;
@@ -209,6 +212,9 @@ class GameScreen implements Screen {
         reverseMoveWidth = (int) (WORLD_WIDTH / 10.0);
         reverseMoveHeight = (int) ((reverseMoveWidth / 551.0) * 659.0);
         ReplayReversedMoveOption = new Texture("core/images/userStuff/ReplayReversedMoveOption.png");
+        VIcon = new Texture("core/images/userStuff/V.png");
+        XIcon = new Texture("core/images/userStuff/X.png");
+        PlusIcon = new Texture("core/images/userStuff/Plus.png");
 
         piecesImages = new PiecesImages((int) (SquaredSizeOfBoard / 8));
 
@@ -220,7 +226,7 @@ class GameScreen implements Screen {
         TouchingNow = false;
         TouchedAlready = false;
         TouchPos = new Point();
-        IsActivePiece = false;
+        ActivePiece = null;
 
         Letters_Images = new LettersImages();
     }
@@ -239,6 +245,11 @@ class GameScreen implements Screen {
 
             case "View":
                 renderViewState(deltaTime);
+                wasGameMode = false;
+                break;
+
+            case "Edit":
+                renderEditState(deltaTime);
                 wasGameMode = false;
                 break;
 
@@ -283,12 +294,8 @@ class GameScreen implements Screen {
                     }
                 } else if (xTouchPixel > (WORLD_WIDTH - WORLD_HEIGHT / 10) / 2 && xTouchPixel < (WORLD_WIDTH + WORLD_HEIGHT / 10) / 2) {
                     StartNewGame(true);
-                    Board newBoard = new Board(Position.Chess_Board);
-                    previousBoards.push(newBoard);
-                    previousBoardsForView.push(new Board(newBoard));
-                    detectionThreads.push(new DetectionThread("?", previousBoardsForView.peek()));
-                    BoardNum = 0;
-                    State = "Game";
+                    State = "Edit";
+                    EditBoard = new Board(Position.Chess_Board);
                     ChoosingTitle = false;
                     if (IsCameraEnabled && (cameraLauncher != null)){
                         cameraLauncher.closeCamera();
@@ -405,7 +412,8 @@ class GameScreen implements Screen {
                             }
                             BoardNum = -1;
                         }
-                    } else if (xTouchPixel > WORLD_WIDTH / 20 && xTouchPixel < WORLD_WIDTH / 4 + WORLD_WIDTH / 20) {
+                    }
+                    else if (xTouchPixel > WORLD_WIDTH / 20 && xTouchPixel < WORLD_WIDTH / 4 + WORLD_WIDTH / 20) {
                         if (!IsPermissionGranted && cameraLauncher != null){
                             cameraLauncher.askAllPermissions();
                         }
@@ -418,7 +426,25 @@ class GameScreen implements Screen {
                             }
                         }
                     }
-                } else if (!HasScrolled && BoardNum != -1 && currentTime > 0.1) {
+                    else if (xTouchPixel > WORLD_WIDTH / 2 - WORLD_WIDTH / 8 && xTouchPixel < WORLD_WIDTH / 2 + WORLD_WIDTH / 8) {
+                        State = "Edit";
+                        EditBoard = new Board(8, null, null, true);
+                        if (BoardNum != -1 && BoardNum < previousBoards.size()){
+                            Stack<Board> tempBoards = new Stack<Board>();
+                            int boardNum = 0;
+                            while (!previousBoards.empty() && BoardNum != boardNum) {
+                                tempBoards.push(previousBoards.pop());
+                                boardNum++;
+                            }
+                            if (!previousBoards.empty()){
+                                EditBoard = new Board(previousBoards.peek());
+                            }
+                            while (!tempBoards.empty()) {
+                                previousBoards.push(tempBoards.pop());
+                            }
+                        }
+                    }
+                } else if (!HasScrolled && BoardNum != -1 && BoardNum < previousBoards.size() && currentTime > 0.075) {
                     Stack<Board> tempBoards = new Stack<Board>();
                     Stack<Board> tempBoardsView = new Stack<Board>();
                     Stack<DetectionThread> tempThreads = new Stack<DetectionThread>();
@@ -444,14 +470,158 @@ class GameScreen implements Screen {
         }
     }
 
+    private void renderEditState(double deltaTime){
+        renderEditStateScreen();
+        // get the screen position of the touch
+
+        xTouchPixel = Gdx.input.getX();
+        yTouchPixel = Gdx.input.getY();
+        TouchedAlready = TouchingNow;
+        TouchingNow = Gdx.input.isTouched();
+
+        detectInputEditState(deltaTime);
+    }
+
+    private void renderEditStateScreen(){
+        float cellSize = SquaredSizeOfBoard / 8;
+        float frameSize = WORLD_WIDTH / 100;
+        float left_x = WORLD_WIDTH / 2 - cellSize * 5 / 2;
+        float down_y = WORLD_HEIGHT / 4 - cellSize;
+        float up_y = WORLD_HEIGHT / 4 * 3;
+        String[] types = new String[]{"Queen", "Bishop", "Knight", "Rook", "Pawn"};
+        renderChoosingPawnNewType(types, cellSize, frameSize, left_x, down_y, "white");
+        renderChoosingPawnNewType(types, cellSize, frameSize, left_x, up_y, "black");
+
+        batch.draw(BlackBackgroundForPawnWinning, left_x + 2 * cellSize - frameSize, up_y + cellSize, cellSize + frameSize * 2, cellSize + frameSize);
+        batch.draw(GrayBackgroundForPawnWinning, left_x + 2 * cellSize, up_y + cellSize, cellSize, cellSize);
+
+        batch.draw(BlackBackgroundForPawnWinning, left_x + 2 * cellSize - frameSize, down_y - cellSize - frameSize, cellSize + frameSize * 2, cellSize + frameSize);
+        batch.draw(GrayBackgroundForPawnWinning, left_x + 2 * cellSize, down_y - cellSize, cellSize, cellSize);
+
+        if (!EditBoard.hasKing("white")){
+            renderPiecesIntoScreen("King", "white", (int)(left_x + cellSize * 5 / 2), (int)(up_y + 1.5 * cellSize));
+        }
+        if (!EditBoard.hasKing("black")){
+            renderPiecesIntoScreen("King", "black", (int)(left_x + cellSize * 5 / 2), (int)(down_y - 0.5 * cellSize));
+        }
+
+        batch.draw(XIcon, WORLD_WIDTH / 16, WORLD_WIDTH / 16, WORLD_WIDTH / 5, WORLD_WIDTH / 5);
+        if (EditBoard.hasKing("white") && EditBoard.hasKing("black") &&
+                (ActivePiece == null || !EditBoard.The_Grid[ActivePiece.X][ActivePiece.Y].Type.equals("King"))){
+            batch.draw(VIcon, WORLD_WIDTH / 16 * 15 - WORLD_WIDTH / 5, WORLD_WIDTH / 16, WORLD_WIDTH / 5, WORLD_WIDTH / 5);
+        }
+
+        renderChessBoardsView(EditBoard, BoardLeftLimit, BoardDownLimit, SquaredSizeOfBoard);
+    }
+
+    private void detectInputEditState(double deltaTime){
+        float cellSize = SquaredSizeOfBoard / 8;
+        float left_x = WORLD_WIDTH / 2 - cellSize * 5 / 2;
+        float up_y = WORLD_HEIGHT / 4;
+        float down_y = WORLD_HEIGHT / 4 * 3 + cellSize;
+        String[] types = new String[]{"Queen", "Bishop", "Knight", "Rook", "Pawn"};
+        String whitePiece = detectInputNewPawnType(types, TouchingNow && !TouchedAlready, cellSize, left_x, down_y);
+        String blackPiece = detectInputNewPawnType(types, TouchingNow && !TouchedAlready, cellSize, left_x, up_y);
+
+        if (TouchingNow && !TouchedAlready){
+            if (yTouchPixel < WORLD_HEIGHT - (up_y - 2 * cellSize) && yTouchPixel > WORLD_HEIGHT - (up_y - cellSize)){
+                if (xTouchPixel > left_x + 2 * cellSize && xTouchPixel < left_x + 3 * cellSize){
+                    if (!EditBoard.hasKing("white")){
+                        whitePiece = "King";
+                    }
+                }
+            }
+            if (yTouchPixel < WORLD_HEIGHT - (down_y) && yTouchPixel > WORLD_HEIGHT - (down_y + cellSize)){
+                if (xTouchPixel > left_x + 2 * cellSize && xTouchPixel < left_x + 3 * cellSize){
+                    if (!EditBoard.hasKing("black")){
+                        blackPiece = "King";
+                    }
+                }
+            }
+        }
+        if (!(whitePiece.equals("") && blackPiece.equals(""))){
+            for (int i = 0; i < BoardSize; i++){
+                for (int j = 0; j < BoardSize; j++){
+                    if (!EditBoard.The_Grid[i][j].Is_there_Piece){
+                        if (!whitePiece.equals("")){
+                            EditBoard.The_Grid[i][j] = new Cell(i, j, true, "white", whitePiece);
+                        }
+                        else{
+                            EditBoard.The_Grid[i][j] = new Cell(i, j, true, "black", blackPiece);
+                        }
+                        ActivePiece = new Point(i, j);
+                        return;
+                    }
+                }
+            }
+        }
+
+        left_x = (WORLD_WIDTH - SquaredSizeOfBoard) / 2;
+        down_y = (WORLD_HEIGHT - SquaredSizeOfBoard) / 2;
+        if (!TouchingNow){
+            if (ActivePiece != null){
+                int posX = -1;
+                int posY = -1;
+                if (xTouchPixel > left_x && xTouchPixel < left_x + 8 * cellSize &&
+                        yTouchPixel > up_y + cellSize/2 && yTouchPixel < up_y + 8.5 * cellSize) {
+                    posX = (int) ((xTouchPixel - left_x) / cellSize);
+                    posY = 7 - (int) ((yTouchPixel - (up_y + cellSize/2)) / cellSize);
+                    Cell prevCell = new Cell(EditBoard.The_Grid[ActivePiece.X][ActivePiece.Y]);
+                    EditBoard.The_Grid[posX][posY] = new Cell(posX, posY, true,
+                            prevCell.Color_piece, prevCell.Type);
+                }
+                if (posX != ActivePiece.X || posY != ActivePiece.Y){
+                    EditBoard.The_Grid[ActivePiece.X][ActivePiece.Y] =
+                            new Cell(ActivePiece.X, ActivePiece.Y, false, "", "");
+                }
+                ActivePiece = null;
+            }
+        }
+
+        if (TouchingNow && !TouchedAlready){
+            if (xTouchPixel > left_x && xTouchPixel < left_x + 8 * cellSize &&
+                    yTouchPixel > down_y && yTouchPixel < down_y + 8.5 * cellSize) {
+                int posX = (int) ((xTouchPixel - left_x) / cellSize);
+                int posY = 7 - (int) ((yTouchPixel - (down_y)) / cellSize);
+                ActivePiece = EditBoard.The_Grid[posX][posY].Is_there_Piece ? new Point(posX, posY) : null;
+            }
+        }
+
+        if (!TouchingNow && TouchedAlready){
+            if (yTouchPixel < WORLD_HEIGHT - WORLD_WIDTH / 16 && yTouchPixel > WORLD_HEIGHT - WORLD_WIDTH / 16 - WORLD_WIDTH / 5){
+                if (xTouchPixel > WORLD_WIDTH / 16 && xTouchPixel < WORLD_WIDTH / 16 + WORLD_WIDTH / 5){
+                    State = "View";
+                }
+                if (xTouchPixel < WORLD_WIDTH / 16 * 15 && xTouchPixel > WORLD_WIDTH / 16 * 15 - WORLD_WIDTH / 5){
+                    Board newBoard = new Board(EditBoard);
+                    previousBoards.push(newBoard);
+                    previousBoardsForView.push(new Board(newBoard));
+                    detectionThreads.push(new DetectionThread("?", previousBoardsForView.peek()));
+                    State = "Game";
+                    EnterGame(previousBoards.peek());
+                    ChoosingTitle = false;
+                    BoardNum = 0;
+                }
+            }
+        }
+    }
+
     private void renderGameState(float deltaTime) {
         // render board map
+        chessGame.KingInDangerToRedBackground();
         renderChessBoard(BoardLeftLimit, BoardDownLimit, SquaredSizeOfBoard);
         renderReverseMoveOption();
         renderReplayReversedMoveOption();
         renderGameTransferScreens();
         renderOpposeStartingColor();
-        renderChoosingPawnNewType();
+        float cellSize = SquaredSizeOfBoard * 5 / 3 / 8;
+        float left_x = WORLD_WIDTH / 2 - cellSize * 2;
+        float down_y = WORLD_HEIGHT / 2;
+        if (chessGame.WinPawn){
+            String[] types = new String[]{"Queen", "Bishop", "Knight", "Rook"};
+            renderChoosingPawnNewType(types, cellSize, WORLD_WIDTH / 60, left_x, down_y, (!Position.Is_white_turn ? "white" : "black"));
+        }
+
         renderTitle(WORLD_WIDTH / 2, WORLD_HEIGHT / 16 * 15, WORLD_HEIGHT / 40);
         if (!wasGameMode && (cameraLauncher != null)) {
             ScreenshotFactory.saveScreenshot(cameraLauncher.getImagesDir(),
@@ -488,9 +658,11 @@ class GameScreen implements Screen {
                             }
                         }
                     }
-                } else {
+                }
+                else {
                     // get new Pawn type input
-                    String newPawnType = detectInputNewPawnType();
+                    String[] types = new String[]{"Queen", "Bishop", "Knight", "Rook"};
+                    String newPawnType = detectInputNewPawnType(types, (!TouchingNow && TouchedAlready), cellSize, left_x, down_y);
                     if (!newPawnType.equals("")) {
                         chessGame.PawnChangedInto(newPawnType);
                         if (IsSpinning && (Position.Is_white_turn ^ direction == 1)) {
@@ -535,7 +707,8 @@ class GameScreen implements Screen {
 
             detectInputReverseReplayMoves();
             detectInputOpposeStartingColor();
-        } else {
+        }
+        else {
             hasBeenUntouched = false;
         }
 
@@ -697,6 +870,7 @@ class GameScreen implements Screen {
         Stack<Board> tempBoardsView = new Stack<Board>();
 
         String title = "";
+        boolean titleFit = false;
         int boardNum = 0;
         while (!detectionThreads.empty() && BoardNum != boardNum) {
             tempThreads.push(detectionThreads.pop());
@@ -708,15 +882,22 @@ class GameScreen implements Screen {
             previousBoards.peek().Title = previousBoardsForView.peek().Title;
             Position.Chess_Board.Title = previousBoards.peek().Title;
             title = detectionThreads.peek().getTitle();
+            titleFit = previousBoardsForView.peek().Title.equals(Board.TitleFit);
+            if (titleFit && !title.equals("?")){
+                Position.Chess_Board.Title = title;
+            }
         }
         while (!tempThreads.empty()) {
             detectionThreads.push(tempThreads.pop());
             previousBoards.push(tempBoards.pop());
             previousBoardsForView.push(tempBoardsView.pop());
         }
-        CurrentTitlesList = new String[ChoosingTitle ? (TitlesList.length + (Position.Chess_Board.Title.equals(Board.NonTitle) ? 1 : 0)) : (Position.Chess_Board.Title.equals(Board.TitleCheck) ? 2 : 1)];
+        CurrentTitlesList = new String[ChoosingTitle ? (TitlesList.length + (Position.Chess_Board.Title.equals(Board.NonTitle) ? 1 : 0)) : ((Position.Chess_Board.Title.equals(Board.TitleCheck) && !titleFit) ? 2 : 1)];
         CurrentTitlesList[0] = Position.Chess_Board.Title;
         if (Position.Chess_Board.Title.equals(Board.TitleCheck)){
+            if (!title.equals(Board.TitleNotFit)){
+                CurrentTitlesList[0] = title;
+            }
             CurrentTitlesList[1] = title;
         }
         else{
@@ -839,28 +1020,17 @@ class GameScreen implements Screen {
         return false;
     }
 
-    private String detectInputNewPawnType() {
-        float cellSize = SquaredSizeOfBoard * 5 / 3 / 8;
-        float left_x = WORLD_WIDTH / 2 - cellSize * 2;
-        float down_y = WORLD_HEIGHT / 2;
-        if (!TouchingNow && TouchedAlready) {
-            if (xTouchPixel > left_x && xTouchPixel < left_x + cellSize * 4 &&
+    private String detectInputNewPawnType(String[] types, boolean active, float cellSize, float left_x, float down_y) {
+        if (active) {
+            if (xTouchPixel > left_x && xTouchPixel < left_x + cellSize * types.length &&
                     yTouchPixel < down_y && yTouchPixel > down_y - cellSize) {
-
-                if (xTouchPixel < left_x + cellSize) {
-                    return "Queen";
-                } else {
-                    if (xTouchPixel < left_x + cellSize * 2) {
-                        return "Knight";
-                    } else {
-                        if (xTouchPixel < left_x + cellSize * 3) {
-                            return "Bishop";
-                        } else {
-                            return "Rook";
-                        }
-                    }
+                int piece = (int) ((xTouchPixel - left_x) / cellSize);
+                return types[piece];
+            }
+            else {
+                if (State.equals("Edit")){
+                    return "";
                 }
-            } else {
                 // Spinning Board Option:
                 if (xTouchPixel > (float) (WORLD_WIDTH / 2 - (float) (WORLD_WIDTH / 4 / 2)) && xTouchPixel < (float) (WORLD_WIDTH / 2 - (float) (WORLD_WIDTH / 4 / 2)) + (float) (WORLD_WIDTH / 4) && yTouchPixel < WORLD_HEIGHT - (float) (WORLD_HEIGHT / 16 * 13) && yTouchPixel > WORLD_HEIGHT - ((float) (WORLD_HEIGHT / 16 * 13) + (float) (WORLD_WIDTH / 4) / 384 * 230)) {
                     IsSpinning = !IsSpinning;
@@ -870,25 +1040,15 @@ class GameScreen implements Screen {
                 }
             }
         }
-
-
         return "";
     }
 
-    private void renderChoosingPawnNewType() {
-        float cellSize = SquaredSizeOfBoard * 5 / 3 / 8;
-        float frameSize = WORLD_WIDTH / 60;
-        float left_x = WORLD_WIDTH / 2 - cellSize * 2;
-        float down_y = WORLD_HEIGHT / 2;
-        if (chessGame.WinPawn) {
-            batch.draw(BlackBackgroundForPawnWinning, left_x - frameSize, down_y - frameSize, 4 * cellSize + 2 * frameSize, cellSize + 2 * frameSize);
-            batch.draw(GrayBackgroundForPawnWinning, left_x, down_y, 4 * cellSize, cellSize);
+    private void renderChoosingPawnNewType(String[] types, float cellSize, float frameSize, float left_x, float down_y, String color) {
+        batch.draw(BlackBackgroundForPawnWinning, left_x - frameSize, down_y - frameSize, types.length * cellSize + 2 * frameSize, cellSize + 2 * frameSize);
+        batch.draw(GrayBackgroundForPawnWinning, left_x, down_y, types.length * cellSize, cellSize);
 
-            String color = !Position.Is_white_turn ? "white" : "black";
-            renderPiecesIntoBoardAtScreen("Queen", color, left_x, down_y, cellSize);
-            renderPiecesIntoBoardAtScreen("Knight", color, left_x + cellSize * 1, down_y, cellSize);
-            renderPiecesIntoBoardAtScreen("Bishop", color, left_x + cellSize * 2, down_y, cellSize);
-            renderPiecesIntoBoardAtScreen("Rook", color, left_x + cellSize * 3, down_y, cellSize);
+        for (int i = 0; i < types.length; i++){
+            renderPiecesIntoBoardAtScreen(types[i], color, left_x + cellSize * i, down_y, cellSize);
         }
     }
 
@@ -973,6 +1133,8 @@ class GameScreen implements Screen {
             batch.draw(TrashCan, (float) (WORLD_WIDTH / 4 * 3), 0, (float) (WORLD_WIDTH / 4), (float) (WORLD_HEIGHT / 8));
         }
         batch.draw(CameraImg, (float) (WORLD_WIDTH / 20), 0, (float) (WORLD_WIDTH / 4), (float) (WORLD_HEIGHT / 8));
+        batch.draw(PlusIcon, WORLD_WIDTH / 2 - WORLD_WIDTH / 10, WORLD_WIDTH / 32, WORLD_WIDTH / 5, WORLD_WIDTH / 5);
+
         return (float) ((boardNum + boardNum % 2) / 2 * (SquaredSizeOfBoard / 2 + (WORLD_WIDTH - SquaredSizeOfBoard) / 3) + (WORLD_WIDTH - SquaredSizeOfBoard) / 3) + (float) (WORLD_HEIGHT / 8);
     }
 
@@ -1081,7 +1243,7 @@ class GameScreen implements Screen {
             if (!TouchedAlready) {
                 touchedColor = Position.Is_white_turn;
                 currentTime = 0;
-                IsActivePiece = false;
+                ActivePiece = null;
 
                 // convert world to position
                 if (xTouchPixel > BoardLeftLimit && xTouchPixel < BoardRightLimit && yTouchPixel > BoardDownLimit && yTouchPixel < BoardUpLimit) {
@@ -1105,7 +1267,7 @@ class GameScreen implements Screen {
             } else {
                 currentTime += deltaTime;
                 if (currentTime > 0.1 && ClickedPiece != null) {
-                    IsActivePiece = true;
+                    ActivePiece = ((ChessGame.BoardCellsGrid[ClickedPiece.X][ClickedPiece.Y].PieceColor.equals("black") ^ Position.Is_white_turn) ? new Point(ClickedPiece) : null);
                     if (ChessGame.Click_counted_on_same_cell % 2 == 0) {
                         chessGame.ClickDuringGame(ClickedPiece);
                     }
@@ -1132,7 +1294,7 @@ class GameScreen implements Screen {
             if (ClickedPiece != null) {
                 ChessGame.BoardCellsGrid[ClickedPiece.X][ClickedPiece.Y].ActivePiece = false;
             }
-            IsActivePiece = false;
+            ActivePiece = null;
         }
     }
 
@@ -1182,27 +1344,18 @@ class GameScreen implements Screen {
                         break;
                 }
                 batch.draw(BackgroundsChessBoardCells[imgNum], leftLimit + ((float) ((1 - direction) / 2) * 7 + direction * i) * BoardPixelsSize / BoardSize, downLimit + ((float) ((1 - direction) / 2) * 7 + direction * j) * BoardPixelsSize / BoardSize, (float) (BoardPixelsSize / BoardSize), (float) (BoardPixelsSize / BoardSize));
-
-                if (!ChessGame.BoardCellsGrid[i][j].PieceType.equals("")) {
-                    if (!ChessGame.BoardCellsGrid[i][j].ActivePiece) {
-                        float pieceSize = BoardPixelsSize / BoardSize;
-                        xPiece = ((((float) ((1 - direction) / 2) * 7 + direction * i) * pieceSize) + leftLimit);
-                        yPiece = ((((float) ((1 - direction) / 2) * 7 + direction * j) * pieceSize) + downLimit);
-                        renderPiecesIntoBoardAtScreen(ChessGame.BoardCellsGrid[i][j].PieceType, ChessGame.BoardCellsGrid[i][j].PieceColor, xPiece, yPiece, pieceSize);
-                    }
+                if (!new Point(i, j).equals(ActivePiece)) {
+                    float pieceSize = BoardPixelsSize / BoardSize;
+                    xPiece = ((((float) ((1 - direction) / 2) * 7 + direction * i) * pieceSize) + leftLimit);
+                    yPiece = ((((float) ((1 - direction) / 2) * 7 + direction * j) * pieceSize) + downLimit);
+                    renderPiecesIntoBoardAtScreen(ChessGame.BoardCellsGrid[i][j].PieceType, ChessGame.BoardCellsGrid[i][j].PieceColor, xPiece, yPiece, pieceSize);
                 }
             }
         }
-        if (ClickedPiece != null) {
-            if (IsActivePiece && (ChessGame.BoardCellsGrid[ClickedPiece.X][ClickedPiece.Y].PieceColor.equals("black") ^ Position.Is_white_turn)) {
-                xPiece = (int) xTouchPixel; //// x touch
-                yPiece = (int) yTouchPixel; //// y touch
-                renderPiecesIntoScreen(ChessGame.BoardCellsGrid[ClickedPiece.X][ClickedPiece.Y].PieceType, ChessGame.BoardCellsGrid[ClickedPiece.X][ClickedPiece.Y].PieceColor, (int) xPiece, (int) yPiece);
-            } else {
-                xPiece = ((((float) ((1 - direction) / 2) * 7 + direction * ClickedPiece.X) * BoardPixelsSize / BoardSize) + leftLimit);
-                yPiece = ((((float) ((1 - direction) / 2) * 7 + direction * ClickedPiece.Y) * BoardPixelsSize / BoardSize) + downLimit);
-                renderPiecesIntoBoardAtScreen(ChessGame.BoardCellsGrid[ClickedPiece.X][ClickedPiece.Y].PieceType, ChessGame.BoardCellsGrid[ClickedPiece.X][ClickedPiece.Y].PieceColor, xPiece, yPiece, (BoardPixelsSize / BoardSize));
-            }
+        if (ActivePiece != null) {
+            xPiece = (int) xTouchPixel; //// x touch
+            yPiece = (int) yTouchPixel; //// y touch
+            renderPiecesIntoScreen(ChessGame.BoardCellsGrid[ActivePiece.X][ActivePiece.Y].PieceType, ChessGame.BoardCellsGrid[ActivePiece.X][ActivePiece.Y].PieceColor, (int) xPiece, (int) yPiece);
         }
     }
 
@@ -1213,13 +1366,17 @@ class GameScreen implements Screen {
         for (int i = 0; i < BoardSize; i++) {
             for (int j = 0; j < BoardSize; j++) {
                 batch.draw(BackgroundsChessBoardCells[(i % 2 == 0 ^ j % 2 == 0) ? 0 : 1], leftLimit + ((float) ((1 - direction) / 2) * 7 + direction * i) * BoardPixelsSize / BoardSize, downLimit + ((float) ((1 - direction) / 2) * 7 + direction * j) * BoardPixelsSize / BoardSize, (float) (BoardPixelsSize / BoardSize), (float) (BoardPixelsSize / BoardSize));
-
-                if (!board.The_Grid[i][j].Type.equals("")) {
+                if (!new Point(i, j).equals(ActivePiece)) {
                     xPiece = ((((float) ((1 - direction) / 2) * 7 + direction * i) * BoardPixelsSize / BoardSize) + leftLimit);
                     yPiece = ((((float) ((1 - direction) / 2) * 7 + direction * j) * BoardPixelsSize / BoardSize) + downLimit);
                     renderPiecesIntoBoardAtScreen(board.The_Grid[i][j].Type, board.The_Grid[i][j].Color_piece, xPiece, yPiece, (BoardPixelsSize / BoardSize));
                 }
             }
+        }
+        if (ActivePiece != null){
+            xPiece = (int) xTouchPixel; //// x touch
+            yPiece = (int) yTouchPixel; //// y touch
+            renderPiecesIntoScreen(board.The_Grid[ActivePiece.X][ActivePiece.Y].Type, board.The_Grid[ActivePiece.X][ActivePiece.Y].Color_piece, (int) xPiece, (int) yPiece);
         }
     }
 

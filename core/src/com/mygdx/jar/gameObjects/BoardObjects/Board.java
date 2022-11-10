@@ -8,6 +8,7 @@ public class Board {
     public static final String NonTitle = "התאם כותרת לעמדה";
     public static final String TitleNotFit = "הכותרת לא מתאימה לעמדה";
     public static final String TitleCheck = "בודק התאמת כותרת לעמדה";
+    public static final String TitleFit = "הכותרת מתאימה לעמדה";
 
     // 2D array of type Cell
     public Cell[][] The_Grid;
@@ -82,8 +83,8 @@ public class Board {
         {
             for (int j = 0; j < BoardSize; j++)
             {
-                Piece currentPieceGroup1 = group.Piece_location(i, j);
-                Piece currentPieceGroup2 = other_group.Piece_location(i, j);
+                Piece currentPieceGroup1 = (group != null ? group.Piece_location(i, j) : null);
+                Piece currentPieceGroup2 = (other_group != null ? other_group.Piece_location(i, j) : null);
                 if (currentPieceGroup1 != null && !currentPieceGroup1.IsDeleted)
                 {
                     The_Grid[i][j] = new Cell(i, j, true, currentPieceGroup1.Color, currentPieceGroup1.Type);
@@ -98,5 +99,18 @@ public class Board {
                 }
             }
         }
+    }
+
+    public boolean hasKing(String color) {
+        for (int i = 0; i < BoardSize; i++){
+            for (int j = 0; j < BoardSize; j++){
+                if (The_Grid[i][j].Is_there_Piece &&
+                        The_Grid[i][j].Color_piece.equals(color) &&
+                        The_Grid[i][j].Type.equals("King")){
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

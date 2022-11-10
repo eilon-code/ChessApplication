@@ -4,6 +4,7 @@ import static com.mygdx.jar.gameObjects.BoardObjects.PositionCheck.TitlesList;
 
 public class DetectionThread extends Thread{
     private final String mTitle;
+    private boolean hasCheckedTitle;
     public DetectionThread(final String title, final Board board) {
         super(new Runnable() {
             @Override
@@ -25,7 +26,7 @@ public class DetectionThread extends Thread{
                 PositionCheck positionChecker = new PositionCheck(board);
                 if (positionChecker.IsTitleFit(title)){
                     System.out.println("Title Match");
-                    board.Title = Position.Chess_Board.Title;
+                    board.Title = Board.TitleFit;
                 }
                 else {
                     System.out.println("Title Doesn't Match");
