@@ -17,7 +17,6 @@ import com.mygdx.jar.gameObjects.BoardObjects.Cell;
 import com.mygdx.jar.gameObjects.BoardObjects.DetectionThread;
 import com.mygdx.jar.gameObjects.BoardObjects.Point;
 import com.mygdx.jar.gameObjects.BoardObjects.Position;
-import com.mygdx.jar.gameObjects.GamePieces.Piece;
 import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
 
 import java.util.Stack;
@@ -96,6 +95,8 @@ class GameScreen implements Screen {
     private float xTouchPixel;
     private float yTouchPixel;
     private float currentTime = 0;
+    private float startY = 0;
+
     private boolean IsSecondTouch;
     private float ViewOffset;
 
@@ -116,33 +117,54 @@ class GameScreen implements Screen {
     private final Stack<DetectionThread> detectionThreads;
 
     private String State;
+    private String previousState;
 
     private final CameraLauncher cameraLauncher;
     private boolean IsCameraEnabled;
-    private boolean wasGameMode;
     private boolean IsPermissionGranted;
     private Point ActivePiece;
 
     GameScreen(int widthScreen, int heightScreen, CameraLauncher launcher) {
         cameraLauncher = launcher;
-        IsPermissionGranted = (cameraLauncher != null ? cameraLauncher.isPermissionGranted() : false);
+        IsPermissionGranted = (cameraLauncher != null && cameraLauncher.isPermissionGranted());
         IsCameraEnabled = false;
         State = "View"; // "Game"
-        wasGameMode = false;
+        previousState = State;
         ChoosingTitle = false;
         IsFisherChess = false;
         BoardSize = 8;
         ViewOffset = 0;
 
-        StartNewGame(IsFisherChess);
-        Board board = new Board(Position.Chess_Board);
+
         previousBoards = new Stack<Board>();
         previousBoardsForView = new Stack<Board>();
         detectionThreads = new Stack<DetectionThread>();
 
-        previousBoards.push(board);
-        previousBoardsForView.push(new Board(board));
-        detectionThreads.push(new DetectionThread("?", previousBoardsForView.peek()));
+        if (cameraLauncher != null){
+            Stack<Board> boards = cameraLauncher.getStackFromStorage();
+            if (!boards.empty()){
+                do{
+                    Board board = boards.pop();
+                    previousBoards.push(board);
+                    previousBoardsForView.push(new Board(board));
+                    detectionThreads.push(new DetectionThread(Board.Nothing, previousBoardsForView.peek()));
+                } while (!boards.empty());
+            }
+            else{
+                StartNewGame(IsFisherChess);
+                Board board = new Board(Position.Chess_Board);
+                previousBoards.push(board);
+                previousBoardsForView.push(new Board(board));
+                detectionThreads.push(new DetectionThread(Board.Nothing, previousBoardsForView.peek()));
+            }
+        }
+        else {
+            StartNewGame(IsFisherChess);
+            Board board = new Board(Position.Chess_Board);
+            previousBoards.push(board);
+            previousBoardsForView.push(new Board(board));
+            detectionThreads.push(new DetectionThread(Board.Nothing, previousBoardsForView.peek()));
+        }
 
         direction = 1;
         IsSpinning = false;
@@ -229,6 +251,9 @@ class GameScreen implements Screen {
         ActivePiece = null;
 
         Letters_Images = new LettersImages();
+//        if (cameraLauncher != null){
+//            cameraLauncher.deleteAll();
+//        }
     }
 
     @Override
@@ -240,29 +265,25 @@ class GameScreen implements Screen {
         switch (State) {
             case "Game":
                 renderGameState(deltaTime);
-                wasGameMode = true;
                 break;
 
             case "View":
                 renderViewState(deltaTime);
-                wasGameMode = false;
                 break;
 
             case "Edit":
                 renderEditState(deltaTime);
-                wasGameMode = false;
                 break;
 
             case "Camera":
                 renderCameraState(deltaTime);
-                wasGameMode = false;
                 break;
 
             default:
                 renderGameOptions();
-                wasGameMode = false;
                 break;
         }
+        previousState = (State.equals("Edit") ? previousState : State);
         batch.end();
     }
 
@@ -350,8 +371,11 @@ class GameScreen implements Screen {
 
     private void detectInputViewState(float deltaTime, float maxHeight, float touchX, float touchY) {
         if (TouchingNow) {
+            if (!TouchedAlready){
+                startY = touchY;
+            }
             if (TouchedAlready) {
-                float velocity = (Math.abs(yTouchPixel - touchY) / WORLD_HEIGHT) / deltaTime;
+                float velocity = (Math.abs(startY - touchY) / WORLD_HEIGHT) / currentTime;
                 if (velocity > (WORLD_WIDTH / 350) * 0.3) {
                     HasScrolled = true;
                 }
@@ -373,7 +397,12 @@ class GameScreen implements Screen {
                     yTouchPixel < WORLD_HEIGHT - (float) (WORLD_HEIGHT / 8))) {
                 int boardNum = 2 * boardY + boardX;
                 if (BoardNum != boardNum && !HasScrolled) {
-                    BoardNum = boardNum;
+                    if (boardNum < previousBoards.size()){
+                        BoardNum = boardNum;
+                    }
+                    else{
+                        BoardNum = -1;
+                    }
                     currentTime = 0;
                 }
                 currentTime += deltaTime;
@@ -390,6 +419,9 @@ class GameScreen implements Screen {
                 if (yTouchPixel > WORLD_HEIGHT - (float) (WORLD_HEIGHT / 8)) {
                     if (xTouchPixel > WORLD_WIDTH / 4 * 3) {
                         if (BoardNum != -1) {
+                            if (cameraLauncher != null){
+                                cameraLauncher.deleteBoard(previousBoards.size() - BoardNum - 1);
+                            }
                             Stack<Board> temp = new Stack<Board>();
                             Stack<Board> tempView = new Stack<Board>();
                             Stack<DetectionThread> tempThreads = new Stack<DetectionThread>();
@@ -444,7 +476,8 @@ class GameScreen implements Screen {
                             }
                         }
                     }
-                } else if (!HasScrolled && BoardNum != -1 && BoardNum < previousBoards.size() && currentTime > 0.075) {
+                }
+                if (!HasScrolled && BoardNum != -1 && BoardNum < previousBoards.size() && currentTime > 0.1) {
                     Stack<Board> tempBoards = new Stack<Board>();
                     Stack<Board> tempBoardsView = new Stack<Board>();
                     Stack<DetectionThread> tempThreads = new Stack<DetectionThread>();
@@ -465,7 +498,6 @@ class GameScreen implements Screen {
                     }
                 }
             }
-            currentTime = 0;
             HasScrolled = false;
         }
     }
@@ -592,26 +624,27 @@ class GameScreen implements Screen {
         if (!TouchingNow && TouchedAlready){
             if (yTouchPixel < WORLD_HEIGHT - WORLD_WIDTH / 16 && yTouchPixel > WORLD_HEIGHT - WORLD_WIDTH / 16 - WORLD_WIDTH / 5){
                 if (xTouchPixel > WORLD_WIDTH / 16 && xTouchPixel < WORLD_WIDTH / 16 + WORLD_WIDTH / 5){
-                    State = "View";
+                    State = previousState;
                 }
                 if (xTouchPixel < WORLD_WIDTH / 16 * 15 && xTouchPixel > WORLD_WIDTH / 16 * 15 - WORLD_WIDTH / 5){
                     Board newBoard = new Board(EditBoard);
                     previousBoards.push(newBoard);
+                    BoardNum = 0;
+                    if (cameraLauncher != null){
+                        System.out.println("Size = " + previousBoards.size() + " BoardNum = " + BoardNum);
+                        cameraLauncher.addBoard(newBoard, previousBoards.size() - BoardNum - 1);
+                    }
                     previousBoardsForView.push(new Board(newBoard));
-                    detectionThreads.push(new DetectionThread("?", previousBoardsForView.peek()));
+                    detectionThreads.push(new DetectionThread(Board.Nothing, previousBoardsForView.peek()));
                     State = "Game";
                     EnterGame(previousBoards.peek());
                     ChoosingTitle = false;
-                    BoardNum = 0;
                 }
             }
         }
     }
 
     private void renderGameState(float deltaTime) {
-        // render board map
-        chessGame.KingInDangerToRedBackground();
-        renderChessBoard(BoardLeftLimit, BoardDownLimit, SquaredSizeOfBoard);
         renderReverseMoveOption();
         renderReplayReversedMoveOption();
         renderGameTransferScreens();
@@ -624,8 +657,12 @@ class GameScreen implements Screen {
             renderChoosingPawnNewType(types, cellSize, WORLD_WIDTH / 60, left_x, down_y, (!Position.Is_white_turn ? "white" : "black"));
         }
 
+        // render board map
+        chessGame.KingInDangerToRedBackground();
+        renderChessBoard(BoardLeftLimit, BoardDownLimit, SquaredSizeOfBoard);
+
         renderTitle(WORLD_WIDTH / 2, WORLD_HEIGHT / 16 * 15, WORLD_HEIGHT / 40);
-        if (!wasGameMode && (cameraLauncher != null)) {
+        if (cameraLauncher != null && !previousState.equals("Game")) {
             ScreenshotFactory.saveScreenshot(cameraLauncher.getImagesDir(),
                     (int) BoardLeftLimit,
                     (int) BoardDownLimit,
@@ -891,7 +928,7 @@ class GameScreen implements Screen {
             Position.Chess_Board.Title = previousBoards.peek().Title;
             title = detectionThreads.peek().getTitle();
             titleFit = previousBoardsForView.peek().Title.equals(Board.TitleFit);
-            if (titleFit && !title.equals("?")){
+            if (titleFit && !title.equals(Board.Nothing)){
                 Position.Chess_Board.Title = title;
             }
         }

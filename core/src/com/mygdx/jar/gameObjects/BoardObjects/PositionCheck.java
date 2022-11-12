@@ -32,9 +32,9 @@ public class PositionCheck {
 
     public boolean king_in_danger(int king_x, int king_y, Move[] moves_options)
     {
-        for (Move moves_option : moves_options) {
-            if (moves_option != null) {
-                if (moves_option.Next_row == king_x && moves_option.Next_column == king_y && !moves_option.Castle) {
+        for (Move move_option : moves_options) {
+            if (move_option != null) {
+                if (move_option.Next_row == king_x && move_option.Next_column == king_y && (!move_option.Castle)) {
                     return true;
                 }
             }
@@ -191,7 +191,7 @@ public class PositionCheck {
 
     private boolean detect_CheckmateIn_X_Moves(int x, boolean is_white_turn, Move[] moves){
         Move[] current_legal_moves = Get_all_legal_Group_moves();
-        Group_of_pieces group = Chess_Board.IsWhiteTurn ? White_Pieces : Black_Pieces;
+        Group_of_pieces group = Is_white_turn ? White_Pieces : Black_Pieces;
         int legal_moves = 0;
         for (Move current_legal_move : current_legal_moves) {
             if (current_legal_move != null) {
@@ -201,8 +201,7 @@ public class PositionCheck {
 
         if (x == 0){
             Point king = group.get_king_point();
-            Move[] opponentThreat = Get_all_Group_moves(!Is_white_turn);
-            boolean king_in_danger = (king != null && king_in_danger(king.X, king.Y, opponentThreat)); // king.equals(KingAtDanger));
+            boolean king_in_danger = (king != null && king.equals(KingAtDanger));
             return legal_moves == 0 && king_in_danger;
         }
         if (legal_moves == 0){

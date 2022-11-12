@@ -1,28 +1,21 @@
 package com.mygdx.jar;
 
 import android.Manifest;
-import android.content.Context;
-import android.content.ContextParams;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.SurfaceTexture;
 import android.net.Uri;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.Surface;
-import android.view.SurfaceView;
 import android.view.TextureView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.camera.core.ImageCapture;
 import androidx.core.content.FileProvider;
 
 import com.badlogic.gdx.Gdx;
@@ -30,9 +23,7 @@ import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.TextureData;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.mygdx.jar.gameObjects.BoardObjects.Board;
 import com.mygdx.jar.graphicsObjects.ScrollingGame;
 import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
 
@@ -40,8 +31,11 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Objects;
+import java.util.Queue;
+import java.util.Stack;
 
 public class AndroidLauncher extends AndroidApplication implements CameraLauncher {
+	private SQLiteDataBaseHandler SQLite;
 	private final String[] permissions = {
 			Manifest.permission.CAMERA,
 			Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -74,7 +68,8 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 
 		///////////////////////////////////////////////////////////////////
 		askAllPermissions();
-		openCamera();
+//		openCamera();
+		SQLite = new SQLiteDataBaseHandler(this);
 	}
 
 	@Override
@@ -214,6 +209,31 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 //		mThread = null;
 //		System.out.println("Camera Closed");
 		cameraHandler.closeCamera();
+	}
+
+	@Override
+	public void addBoard(Board board, int boardNum){
+		SQLite.addBoard(board, Integer.toString(boardNum));
+	}
+
+	@Override
+	public void updateBoard(Board board, int boardNum){
+		SQLite.updateBoard(board, Integer.toString(boardNum));
+	}
+
+	@Override
+	public Stack<Board> getStackFromStorage(){
+		return SQLite.readAllData();
+	}
+
+	@Override
+	public void deleteBoard(int boardNum){
+		SQLite.deleteBoard(Integer.toString(boardNum));
+	}
+
+	@Override
+	public void deleteAll() {
+		SQLite.deleteAllData();
 	}
 
 	@Override
