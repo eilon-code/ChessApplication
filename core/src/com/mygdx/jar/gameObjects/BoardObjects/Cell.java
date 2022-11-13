@@ -1,5 +1,7 @@
 package com.mygdx.jar.gameObjects.BoardObjects;
 
+import java.util.Objects;
+
 public class Cell {
     public int Row_Number;
     public int Column_Number;
@@ -23,5 +25,13 @@ public class Cell {
         Is_there_Piece = original_cell.Is_there_Piece;
         Color_piece = original_cell.Color_piece;
         Type = original_cell.Type;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Cell)) return false;
+        Cell cell = (Cell) o;
+        return Row_Number == cell.Row_Number && Column_Number == cell.Column_Number && Is_there_Piece == cell.Is_there_Piece && Color_piece.equals(cell.Color_piece) && Type.equals(cell.Type);
     }
 }

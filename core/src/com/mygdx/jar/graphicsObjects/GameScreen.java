@@ -48,6 +48,7 @@ class GameScreen implements Screen {
 
     private final Texture TrashCan;
     private final Texture CameraImg;
+    private final Texture SettingsImg;
     private final Texture SocialMedia;
     private final Texture ViewStateImg;
     private final Texture GalleryImg;
@@ -135,11 +136,14 @@ class GameScreen implements Screen {
         BoardSize = 8;
         ViewOffset = 0;
 
-
         previousBoards = new Stack<Board>();
         previousBoardsForView = new Stack<Board>();
         detectionThreads = new Stack<DetectionThread>();
 
+//        if (cameraLauncher != null){
+//            cameraLauncher.deleteAll();
+//            cameraLauncher.resetSQL();
+//        }
         if (cameraLauncher != null){
             Stack<Board> boards = cameraLauncher.getStackFromStorage();
             if (!boards.empty()){
@@ -156,6 +160,7 @@ class GameScreen implements Screen {
                 previousBoards.push(board);
                 previousBoardsForView.push(new Board(board));
                 detectionThreads.push(new DetectionThread(Board.Nothing, previousBoardsForView.peek()));
+                cameraLauncher.addBoard(new Board(board), 0);
             }
         }
         else {
@@ -217,6 +222,7 @@ class GameScreen implements Screen {
         BlackBackgroundForPawnWinning = new Texture("core/images/PawnWinningImages/Black.png");
         TrashCan = new Texture("core/images/userStuff/trashCan.png");
         CameraImg = new Texture("core/images/userStuff/camera.png");
+        SettingsImg = new Texture("core/images/userStuff/settings.png");
         SocialMedia = new Texture("core/images/userStuff/socialMedia.png");
         ViewStateImg = new Texture("core/images/userStuff/viewState.png");
         GalleryImg = new Texture("core/images/userStuff/gallery.png");
@@ -251,9 +257,6 @@ class GameScreen implements Screen {
         ActivePiece = null;
 
         Letters_Images = new LettersImages();
-//        if (cameraLauncher != null){
-//            cameraLauncher.deleteAll();
-//        }
     }
 
     @Override
@@ -542,7 +545,7 @@ class GameScreen implements Screen {
                 (ActivePiece == null || !EditBoard.The_Grid[ActivePiece.X][ActivePiece.Y].Type.equals("King"))){
             batch.draw(VIcon, WORLD_WIDTH / 16 * 15 - WORLD_WIDTH / 5, WORLD_WIDTH / 16, WORLD_WIDTH / 5, WORLD_WIDTH / 5);
         }
-
+        renderOpposeStartingColor();
         renderChessBoardsView(EditBoard, BoardLeftLimit, BoardDownLimit, SquaredSizeOfBoard);
     }
 
@@ -627,28 +630,71 @@ class GameScreen implements Screen {
                     State = previousState;
                 }
                 if (xTouchPixel < WORLD_WIDTH / 16 * 15 && xTouchPixel > WORLD_WIDTH / 16 * 15 - WORLD_WIDTH / 5){
-                    Board newBoard = new Board(EditBoard);
-                    previousBoards.push(newBoard);
-                    BoardNum = 0;
-                    if (cameraLauncher != null){
-                        System.out.println("Size = " + previousBoards.size() + " BoardNum = " + BoardNum);
-                        cameraLauncher.addBoard(newBoard, previousBoards.size() - BoardNum - 1);
+                    Board board = new Board(EditBoard);
+                    if (!previousState.equals("Game")){
+                        board = new Board(EditBoard);
+                        previousBoards.push(board);
+                        BoardNum = 0;
+                        if (cameraLauncher != null){
+                            System.out.println("Size = " + previousBoards.size() + " BoardNum = " + BoardNum);
+                            cameraLauncher.addBoard(board, previousBoards.size() - BoardNum - 1);
+                        }
+                        previousBoardsForView.push(new Board(board));
+                        detectionThreads.push(new DetectionThread(Board.Nothing, previousBoardsForView.peek()));
                     }
-                    previousBoardsForView.push(new Board(newBoard));
-                    detectionThreads.push(new DetectionThread(Board.Nothing, previousBoardsForView.peek()));
+                    else{
+                        Stack<Board> tempBoards = new Stack<Board>();
+                        Stack<Board> tempBoardsForView = new Stack<Board>();
+                        Stack<DetectionThread> tempDetectionThreads = new Stack<DetectionThread>();
+                        boolean jump = true;
+                        int boardNum = 0;
+                        while (boardNum < BoardNum && !previousBoards.empty()){
+                            tempBoards.push(previousBoards.pop());
+                            tempBoardsForView.push(previousBoardsForView.pop());
+                            tempDetectionThreads.push(detectionThreads.pop());
+                            boardNum++;
+                        }
+                        if (!EditBoard.equals(previousBoards.peek())){
+                            jump = false;
+                            String previousTitle = previousBoards.peek().Title;
+                            previousBoards.pop();
+                            previousBoardsForView.pop();
+                            detectionThreads.pop();
+                            board = new Board(EditBoard);
+                            board.Title = previousTitle;
+                            previousBoards.push(board);
+                            previousBoardsForView.push(new Board(board));
+                            detectionThreads.push(new DetectionThread(Board.Nothing, new Board(board)));
+                            if (cameraLauncher != null){
+                                cameraLauncher.updateBoard(new Board(board), previousBoards.size() + tempBoards.size() - BoardNum - 1);
+                            }
+                        }
+                        while (!tempBoards.empty()){
+                            previousBoards.push(tempBoards.pop());
+                            previousBoardsForView.push(tempBoardsForView.pop());
+                            detectionThreads.push(tempDetectionThreads.pop());
+                        }
+                        System.out.println("JUMP = " + jump + "Boardnum = " + BoardNum);
+                        if (jump){
+                            State = "Game";
+                            return;
+                        }
+                    }
                     State = "Game";
-                    EnterGame(previousBoards.peek());
+                    EnterGame(board);
                     ChoosingTitle = false;
                 }
             }
         }
+
+        detectInputOpposeStartingColor();
     }
 
     private void renderGameState(float deltaTime) {
         renderReverseMoveOption();
         renderReplayReversedMoveOption();
         renderGameTransferScreens();
-        renderOpposeStartingColor();
+
         float cellSize = SquaredSizeOfBoard * 5 / 3 / 8;
         float left_x = WORLD_WIDTH / 2 - cellSize * 2;
         float down_y = WORLD_HEIGHT / 2;
@@ -678,6 +724,7 @@ class GameScreen implements Screen {
         detectInputChoosingTitle(WORLD_WIDTH / 2, WORLD_HEIGHT / 16 * 15, WORLD_HEIGHT / 40);
 
         if (!(ChoosingTitle || wasChoosingTitle)) {
+            detectInputSettings();
             if (!chessGame.GameOver) {
                 // render the option of spinning screen
                 renderSpinningScreenOption();
@@ -749,9 +796,7 @@ class GameScreen implements Screen {
                     }
                 }
             }
-
             detectInputReverseReplayMoves();
-            detectInputOpposeStartingColor();
         }
         else {
             hasBeenUntouched = false;
@@ -762,50 +807,45 @@ class GameScreen implements Screen {
         wasPawnWin = chessGame.WinPawn;
     }
 
-    private void renderOpposeStartingColor() {
-        if (!Position.reverseMoveAvailable()) {
-            batch.draw((Position.Is_white_turn ? WhiteTurn : BlackTurn), WORLD_WIDTH / 16, WORLD_HEIGHT / 32 * 25, WORLD_WIDTH / 4, WORLD_WIDTH / 8);
-        }
-    }
-
     private void renderGameTransferScreens() {
         batch.draw(BackgroundsChessBoardCells[3], 0, 0, WORLD_WIDTH, (float) (WORLD_HEIGHT / 8));
         batch.draw(SocialMedia, (float) (WORLD_WIDTH / 64 * 28), (float) (WORLD_HEIGHT / 200), (float) (WORLD_HEIGHT / 9), (float) (WORLD_HEIGHT / 9));
         batch.draw(ViewStateImg, (float) (WORLD_WIDTH / 16 * 12), (float) (WORLD_HEIGHT / 100), (float) (WORLD_HEIGHT / 10), (float) (WORLD_HEIGHT / 10));
         batch.draw(CameraImg, (float) (WORLD_WIDTH / 20), 0, (float) (WORLD_WIDTH / 4), (float) (WORLD_HEIGHT / 8));
+        batch.draw(SettingsImg, WORLD_WIDTH / 6 - WORLD_WIDTH / 12, WORLD_HEIGHT / 32 * 25, WORLD_WIDTH / 6, WORLD_WIDTH / 6);
+    }
+
+    private void detectInputSettings(){
+        if (TouchedAlready && !TouchingNow){
+            if (xTouchPixel > WORLD_WIDTH / 6 - WORLD_WIDTH / 12 && xTouchPixel < WORLD_WIDTH / 6 + WORLD_WIDTH / 12){
+                if (yTouchPixel < WORLD_HEIGHT / 32 * 7 && yTouchPixel > WORLD_HEIGHT / 32 * 7 - WORLD_WIDTH / 6){
+                    Stack<Board> tempBoards = new Stack<Board>();
+                    int boardNum = 0;
+                    while (boardNum < BoardNum && !previousBoards.empty()){
+                        tempBoards.push(previousBoards.pop());
+                        boardNum++;
+                    }
+                    if (!previousBoards.empty()){
+                        EditBoard = new Board(previousBoards.peek());
+                    }
+                    while (!tempBoards.empty()){
+                        previousBoards.push(tempBoards.pop());
+                    }
+                    State = "Edit";
+                }
+            }
+        }
+    }
+
+    private void renderOpposeStartingColor() {
+        batch.draw((EditBoard.IsWhiteTurn ? WhiteTurn : BlackTurn), WORLD_WIDTH / 2 - WORLD_WIDTH / 8, WORLD_HEIGHT / 32 * 28, WORLD_WIDTH / 4, WORLD_WIDTH / 8);
     }
 
     private void detectInputOpposeStartingColor() {
         if (TouchedAlready && !TouchingNow) {
-            if (yTouchPixel < WORLD_HEIGHT / 32 * 7 && yTouchPixel > WORLD_HEIGHT / 32 * 5) {
-                if (xTouchPixel > WORLD_WIDTH / 16 && xTouchPixel < WORLD_WIDTH / 16 + WORLD_WIDTH / 4) {
-                    if (!Position.reverseMoveAvailable()) {
-                        Position.Is_white_turn = !Position.Is_white_turn;
-                        chessGame.ClearHistory();
-
-                        if (BoardNum != -1) {
-                            Stack<Board> temp = new Stack<Board>();
-                            Stack<Board> tempView = new Stack<Board>();
-
-                            int boardNum = 0;
-                            while (!previousBoards.empty() && BoardNum != boardNum) {
-                                temp.push(previousBoards.pop());
-                                tempView.push(previousBoardsForView.pop());
-                                boardNum++;
-                            }
-                            if (!previousBoards.empty()) {
-                                previousBoards.peek().IsWhiteTurn = !previousBoards.peek().IsWhiteTurn;
-                                previousBoardsForView.peek().IsWhiteTurn = previousBoards.peek().IsWhiteTurn;
-                            }
-                            while (!temp.empty()) {
-                                previousBoards.push(temp.pop());
-                                previousBoardsForView.push(tempView.pop());
-                            }
-                        }
-                        if (IsSpinning && Position.Is_white_turn ^ direction == 1) {
-                            direction *= -1;
-                        }
-                    }
+            if (yTouchPixel < WORLD_HEIGHT / 32 * 4 && yTouchPixel > WORLD_HEIGHT / 32 * 2) {
+                if (xTouchPixel > WORLD_WIDTH / 2 - WORLD_WIDTH / 8 && xTouchPixel < WORLD_WIDTH / 2 + WORLD_WIDTH / 8) {
+                    EditBoard.IsWhiteTurn = !EditBoard.IsWhiteTurn;
                 }
             }
         }

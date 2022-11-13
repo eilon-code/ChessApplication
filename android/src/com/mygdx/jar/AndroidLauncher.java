@@ -31,7 +31,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Objects;
-import java.util.Queue;
 import java.util.Stack;
 
 public class AndroidLauncher extends AndroidApplication implements CameraLauncher {
@@ -211,6 +210,10 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 		cameraHandler.closeCamera();
 	}
 
+	@Override
+	public void resetSQL(){
+		SQLite.reset();
+	}
 	@Override
 	public void addBoard(Board board, int boardNum){
 		SQLite.addBoard(board, Integer.toString(boardNum));

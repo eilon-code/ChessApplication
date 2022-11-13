@@ -22,6 +22,7 @@ class SQLiteDataBaseHandler extends SQLiteOpenHelper {
 
     private static final String COLUMN_ID = "_id";
     private static final String COLUMN_TITLE = "title";
+    private static final String COLUMN_STARTING_COLOR = "color";
     private static String[][] COLUMN_DESCRIPTION;
 
     public SQLiteDataBaseHandler(@Nullable Context context) {
@@ -46,7 +47,7 @@ class SQLiteDataBaseHandler extends SQLiteOpenHelper {
         }
         String query = "CREATE TABLE " + TABLE_NAME +
                 " (" + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                description + COLUMN_TITLE + " TEXT" + ");";
+                description + COLUMN_STARTING_COLOR + " TEXT, " + COLUMN_TITLE + " TEXT" + ");";
         db.execSQL(query);
     }
 
@@ -62,6 +63,7 @@ class SQLiteDataBaseHandler extends SQLiteOpenHelper {
         System.out.println("id board = " + row_id);
 
         cv.put(COLUMN_ID, row_id);
+        cv.put(COLUMN_STARTING_COLOR, board.IsWhiteTurn);
         cv.put(COLUMN_TITLE, board.Title);
         for (int i = 0; i < A_TO_H.length; i++){
             for (int j = 0; j < ONE_TO_EIGHT.length; j++){
@@ -85,6 +87,7 @@ class SQLiteDataBaseHandler extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
 
+        cv.put(COLUMN_STARTING_COLOR, board.IsWhiteTurn);
         cv.put(COLUMN_TITLE, board.Title);
         for (int i = 0; i < A_TO_H.length; i++){
             for (int j = 0; j < ONE_TO_EIGHT.length; j++){
@@ -122,7 +125,8 @@ class SQLiteDataBaseHandler extends SQLiteOpenHelper {
 
                     }
                 }
-                board.Title = cursor.getString(A_TO_H.length * ONE_TO_EIGHT.length + 1);
+                board.IsWhiteTurn = cursor.getInt(A_TO_H.length * ONE_TO_EIGHT.length + 1) == 1;
+                board.Title = cursor.getString(A_TO_H.length * ONE_TO_EIGHT.length + 2);
                 allBoards.push(new Board(board));
                 System.out.println("Board ID = " + cursor.getPosition() + " in A1: " + board.The_Grid[0][0].Type);
             } while (cursor.moveToNext());
@@ -151,6 +155,13 @@ class SQLiteDataBaseHandler extends SQLiteOpenHelper {
     public void deleteAllData(){
         SQLiteDatabase db = this.getWritableDatabase();
         db.execSQL("DELETE FROM " + TABLE_NAME);
+        db.close();
+    }
+
+    public void reset(){
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
+        onCreate(db);
         db.close();
     }
 }

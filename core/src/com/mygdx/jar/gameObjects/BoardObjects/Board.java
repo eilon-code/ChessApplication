@@ -2,6 +2,9 @@ package com.mygdx.jar.gameObjects.BoardObjects;
 
 import com.mygdx.jar.gameObjects.GamePieces.Piece;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 public class Board {
     // the size of the board is  8*8 (chess board)
     public static int BoardSize;
@@ -113,5 +116,20 @@ public class Board {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Board)) return false;
+        Board board = (Board) o;
+        for (int i = 0; i < BoardSize; i++){
+            for (int j = 0; j < BoardSize; j++){
+                if (!The_Grid[i][j].equals(board.The_Grid[i][j])){
+                    return false;
+                }
+            }
+        }
+        return IsWhiteTurn == board.IsWhiteTurn;
     }
 }

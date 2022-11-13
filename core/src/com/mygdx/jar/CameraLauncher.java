@@ -27,6 +27,8 @@ public interface CameraLauncher {
 
     File getStoredImage();
 
+    void resetSQL();
+
     void addBoard(Board board, int boardNum);
 
     void updateBoard(Board board, int boardNum);
