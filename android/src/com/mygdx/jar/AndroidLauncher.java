@@ -182,7 +182,7 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 		}
 
 		startActivity(chooser);
-		// startActivity(shareIntent);
+//		startActivity(shareIntent);
 	}
 
 	@Override

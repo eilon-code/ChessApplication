@@ -119,6 +119,7 @@ class GameScreen implements Screen {
 
     private String State;
     private String previousState;
+    private boolean hasPhotoTaken;
 
     private final CameraLauncher cameraLauncher;
     private boolean IsCameraEnabled;
@@ -129,6 +130,7 @@ class GameScreen implements Screen {
         cameraLauncher = launcher;
         IsPermissionGranted = (cameraLauncher != null && cameraLauncher.isPermissionGranted());
         IsCameraEnabled = false;
+        hasPhotoTaken = false;
         State = "View"; // "Game"
         previousState = State;
         ChoosingTitle = false;
@@ -268,18 +270,22 @@ class GameScreen implements Screen {
         switch (State) {
             case "Game":
                 renderGameState(deltaTime);
+                hasPhotoTaken = true;
                 break;
 
             case "View":
                 renderViewState(deltaTime);
+                hasPhotoTaken = false;
                 break;
 
             case "Edit":
                 renderEditState(deltaTime);
+                hasPhotoTaken = false;
                 break;
 
             case "Camera":
                 renderCameraState(deltaTime);
+                hasPhotoTaken = false;
                 break;
 
             default:
@@ -287,6 +293,7 @@ class GameScreen implements Screen {
                 break;
         }
         previousState = (State.equals("Edit") ? previousState : State);
+
         batch.end();
     }
 
@@ -708,7 +715,8 @@ class GameScreen implements Screen {
         renderChessBoard(BoardLeftLimit, BoardDownLimit, SquaredSizeOfBoard);
 
         renderTitle(WORLD_WIDTH / 2, WORLD_HEIGHT / 16 * 15, WORLD_HEIGHT / 40);
-        if (cameraLauncher != null && !previousState.equals("Game")) {
+        if (cameraLauncher != null && !hasPhotoTaken) {
+            System.out.println("Taking a Pick");
             ScreenshotFactory.saveScreenshot(cameraLauncher.getImagesDir(),
                     (int) BoardLeftLimit,
                     (int) BoardDownLimit,
