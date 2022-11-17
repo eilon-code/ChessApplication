@@ -34,7 +34,7 @@ public class Position {
     }
 
     public Position(Board chess_board) {
-        Chess_Board = chess_board;
+        Chess_Board = new Board(chess_board);
         White_Pieces = new Group_of_pieces(chess_board, "white");
         Black_Pieces = new Group_of_pieces(chess_board, "black");
         Is_white_turn = chess_board.IsWhiteTurn;
@@ -42,6 +42,39 @@ public class Position {
         RecordedMoves = new Stack<Move>();
         ReversedMoves = new Stack<Move>();
         setDangerCell(true);
+    }
+
+    public static void compareBoardToPosition(Board board){
+        String[] A_TO_H = new String[]{"A", "B", "C", "D", "E", "F", "G", "H"};
+        String[] ONE_TO_EIGHT = new String[]{"1", "2", "3", "4", "5", "6", "7", "8"};
+        StringBuilder txt = new StringBuilder("Board Fuck-Ups: ");
+        for (int i = 0; i < A_TO_H.length; i++) {
+            for (int j = 0; j < ONE_TO_EIGHT.length; j++) {
+                Cell cell1 = new Cell(board.The_Grid[i][j]);
+                Cell cell2 = new Cell(Position.Chess_Board.The_Grid[i][j]);
+                if (!cell1.equals(cell2)){
+                    txt.append(A_TO_H[i]);
+                    txt.append(ONE_TO_EIGHT[j]);
+                    txt.append(": ");
+                    txt.append("{Before load: ");
+                    txt.append(cell1.Is_there_Piece ? cell1.Type : Board.Nothing);
+                    txt.append(", After load: ");
+                    txt.append(cell2.Is_there_Piece ? cell2.Type : Board.Nothing);
+                    txt.append("}");
+                    if (i < A_TO_H.length - 1 || j < ONE_TO_EIGHT.length - 1){
+                        txt.append(", ");
+                    }
+                }
+            }
+        }
+        if (txt.toString().equals("Board Fuck-Ups: ")){
+            System.out.println(txt.toString() + "NONE :)");
+        }
+        else{
+            String text = txt.toString();
+            text = text.substring(0, text.length() - 2);
+            System.out.println(text);
+        }
     }
 
     public static Move[] Get_all_legal_moves()
