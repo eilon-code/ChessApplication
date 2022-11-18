@@ -1,14 +1,17 @@
 package com.mygdx.jar.gameObjects.BoardObjects;
 
+import com.mygdx.jar.gameObjects.GamePieces.Color;
+import com.mygdx.jar.gameObjects.GamePieces.PieceType;
+
 public class BoardCell {
-    public String PieceType;
+    public PieceType type;
     public String BackgroundColor;
-    public String PieceColor;
+    public Color pieceColor;
     public boolean ActivePiece;
 
     public BoardCell(){
-        PieceType = null;
-        PieceColor = null;
+        type = PieceType.None;
+        pieceColor = Color.None;
         BackgroundColor = null;
         ActivePiece = false;
     }

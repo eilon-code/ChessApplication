@@ -1,43 +1,44 @@
 package com.mygdx.jar.gameObjects.GamePieces;
 
 import com.mygdx.jar.gameObjects.BoardObjects.Board;
-import com.mygdx.jar.gameObjects.BoardObjects.Group_of_pieces;
+import com.mygdx.jar.gameObjects.BoardObjects.GroupOfPieces;
 import com.mygdx.jar.gameObjects.BoardObjects.Move;
+
+import java.util.Stack;
 
 public class Pawn extends Piece
 {
     public boolean moved_two_cells;
 
-    public Pawn(String color, int x, int y, int piece_num, int number_of_moves)
+    public Pawn(Color color, int row, int column, int pieceNum, int numberOfMoves)
     {
-        super("Pawn", color, x, y, piece_num, false, number_of_moves);
-        moved_two_cells = false;
+        super(PieceType.Pawn, color, row, column, pieceNum, false, numberOfMoves);
+        this.moved_two_cells = false;
     }
 
-    public Pawn(Pawn original_pawn)
+    public Pawn(Pawn originalPawn)
     {
-        super(original_pawn);
-        moved_two_cells = original_pawn.moved_two_cells;
+        super(originalPawn);
+        this.moved_two_cells = originalPawn.moved_two_cells;
     }
 
-    public Pawn(Piece original_pawn)
+    public Pawn(Piece originalPawn)
     {
-        super(original_pawn);
-        moved_two_cells = false;
+        super(originalPawn);
+        this.type = PieceType.Pawn;
+        this.moved_two_cells = false;
     }
 
     @Override
-    public int Get_Max_Number_Of_Moves_On_Board()
+    public int getMaxNumberOfMovesOnBoard()
     {
         return 4;
     }
 
     @Override
-    public int Fill_All_In_Board_Moves(Move[] Group_moves, int current_index, boolean is_white_turn,
-                                       boolean Is_white_up, Board chess_board, Group_of_pieces other_group, Group_of_pieces group)
+    public void fillPieceMoves(Stack<Move> groupMoves, boolean is_white_turn,
+                               boolean Is_white_up, Board board, GroupOfPieces otherGroup, GroupOfPieces group)
     {
-        int number_of_valid_moves = 0;
-
         int is_board_turned_up;
         if (is_white_turn ^ Is_white_up)
         {
@@ -47,104 +48,92 @@ public class Pawn extends Piece
         {
             is_board_turned_up = 1;
         }
-        if (Column_Number != 7 && Column_Number != 0)
+        if (column < 7 && column > 0)
         {
-            if (!chess_board.The_Grid[Row_Number][Column_Number + 1 - 2 * is_board_turned_up].Is_there_Piece)
+            if (!board.cellsGrid[row][column + 1 - 2 * is_board_turned_up].isTherePiece)
             {
-                if (Column_Number + 1 - 2 * is_board_turned_up == 0 || Column_Number + 1 - 2 * is_board_turned_up == 7){
-                    for (String crownType : Piece.CrownTypes){
-                        Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number,
-                                Column_Number + 1 - 2 * is_board_turned_up, is_white_turn, "Pawn", crownType);
-                        number_of_valid_moves++;
+                if (column + 1 - 2 * is_board_turned_up == 0 || column + 1 - 2 * is_board_turned_up == 7){
+                    for (PieceType crownType : Piece.CrownTypes){
+                        groupMoves.push(new Move(row, column, row, column + 1 - 2 * is_board_turned_up, color, PieceType.Pawn, crownType));
                     }
                 }
                 else{
-                    Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number,
-                            Column_Number + 1 - 2 * is_board_turned_up, is_white_turn, "Pawn");
-                    number_of_valid_moves++;
-                    if (Column_Number == 1 + 5 * is_board_turned_up && !chess_board.The_Grid[Row_Number][Column_Number + 2 - 4 * is_board_turned_up].Is_there_Piece)
+                    groupMoves.push(new Move(row, column, row,
+                            column + 1 - 2 * is_board_turned_up, color, PieceType.Pawn));
+                    if (column == 1 + 5 * is_board_turned_up && !board.cellsGrid[row][column + 2 - 4 * is_board_turned_up].isTherePiece)
                     {
-                        Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number,
-                                Column_Number, Row_Number, Column_Number + 2 - 4 * is_board_turned_up, is_white_turn, "Pawn");
-                        number_of_valid_moves++;
+                        groupMoves.push(new Move(row, column, row, column + 2 - 4 * is_board_turned_up, color, PieceType.Pawn));
                     }
                 }
             }
-            if (Row_Number < 7)
+            if (row < 7)
             {
-                if (chess_board.The_Grid[Row_Number + 1][Column_Number + 1 - 2 * is_board_turned_up].Is_there_Piece && !(chess_board.The_Grid[Row_Number + 1][Column_Number + 1 - 2 * is_board_turned_up].Color_piece.equals(Color)))
+                if (board.cellsGrid[row + 1][column + 1 - 2 * is_board_turned_up].isTherePiece && !(board.cellsGrid[row + 1][column + 1 - 2 * is_board_turned_up].color.equals(color)))
                 {
-                    if (Column_Number + 1 - 2 * is_board_turned_up == 0 || Column_Number + 1 - 2 * is_board_turned_up == 7){
-                        for (String crownType : Piece.CrownTypes){
-                            Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number,
-                                    Column_Number, Row_Number + 1, Column_Number + 1 - 2 * is_board_turned_up, is_white_turn, "Pawn", crownType);
-                            number_of_valid_moves++;
+                    if (column + 1 - 2 * is_board_turned_up == 0 || column + 1 - 2 * is_board_turned_up == 7){
+                        for (PieceType crownType : Piece.CrownTypes){
+                            groupMoves.push(new Move(row,
+                                    column, row + 1, column + 1 - 2 * is_board_turned_up, color, PieceType.Pawn, crownType));
                         }
                     }
                     else {
-                        Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number,
-                                Column_Number, Row_Number + 1, Column_Number + 1 - 2 * is_board_turned_up, is_white_turn, "Pawn");
-                        number_of_valid_moves++;
+                        groupMoves.push(new Move(row,
+                                column, row + 1, column + 1 - 2 * is_board_turned_up, color, PieceType.Pawn));
                     }
                 }
             }
-            if (Row_Number > 0)
+            if (row > 0)
             {
-                if (chess_board.The_Grid[Row_Number - 1][Column_Number + 1 - 2 * is_board_turned_up].Is_there_Piece && !(chess_board.The_Grid[Row_Number - 1][Column_Number + 1 - 2 * is_board_turned_up].Color_piece.equals(Color)))
+                if (board.cellsGrid[row - 1][column + 1 - 2 * is_board_turned_up].isTherePiece && !(board.cellsGrid[row - 1][column + 1 - 2 * is_board_turned_up].color.equals(color)))
                 {
-                    if (Column_Number + 1 - 2 * is_board_turned_up == 0 || Column_Number + 1 - 2 * is_board_turned_up == 7){
-                        for (String crownType : Piece.CrownTypes){
-                            Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number,
-                                    Column_Number, Row_Number - 1, Column_Number + 1 - 2 * is_board_turned_up, is_white_turn, "Pawn", crownType);
-                            number_of_valid_moves++;
+                    if (column + 1 - 2 * is_board_turned_up == 0 || column + 1 - 2 * is_board_turned_up == 7){
+                        for (PieceType crownType : Piece.CrownTypes){
+                            groupMoves.push(new Move(row,
+                                    column, row - 1, column + 1 - 2 * is_board_turned_up, color, PieceType.Pawn, crownType));
                         }
                     }
                     else{
-                        Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number,
-                                Column_Number, Row_Number - 1, Column_Number + 1 - 2 * is_board_turned_up, is_white_turn, "Pawn");
-                        number_of_valid_moves++;
+                        groupMoves.push(new Move(row,
+                                column, row - 1, column + 1 - 2 * is_board_turned_up, color, PieceType.Pawn));
                     }
                 }
             }
 
-            if (Column_Number == 4 || Column_Number == 3)
+            if (column == 4 || column == 3)
             {
-                if (Row_Number > 0)
+                if (row > 0)
                 {
-                    if (chess_board.The_Grid[Row_Number - 1][Column_Number].Is_there_Piece && !(chess_board.The_Grid[Row_Number - 1][Column_Number].Color_piece.equals(Color)))
+                    if (board.cellsGrid[row - 1][row].isTherePiece && !(board.cellsGrid[row - 1][column].color.equals(color)))
                     {
-                        if (other_group.Piece_location(Row_Number - 1, Column_Number) != null
-                        && !other_group.Piece_location(Row_Number - 1, Column_Number).IsDeleted
-                        && other_group.Piece_location(Row_Number - 1, Column_Number).Type.equals("Pawn"))
+                        if (otherGroup.Piece_location(row - 1, column) != null
+                        && !otherGroup.Piece_location(row - 1, column).isDeleted
+                        && otherGroup.Piece_location(row - 1, column).type.equals(PieceType.Pawn))
                         {
-                            if (((Pawn)other_group.Piece_location(Row_Number - 1, Column_Number)).moved_two_cells)
+                            if (((Pawn)otherGroup.Piece_location(row - 1, column)).moved_two_cells)
                             {
-                                Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number,
-                                Column_Number, Row_Number - 1, Column_Number + 1 - 2 * is_board_turned_up, is_white_turn, "Pawn");
-                                number_of_valid_moves++;
+                                groupMoves.push(new Move(row,
+                                column, row - 1, column + 1 - 2 * is_board_turned_up, color, PieceType.Pawn));
                             }
                         }
                     }
                 }
-                if (Row_Number < 7)
+                if (row < 7)
                 {
-                    if (chess_board.The_Grid[Row_Number + 1][Column_Number].Is_there_Piece && !(chess_board.The_Grid[Row_Number + 1][Column_Number].Color_piece.equals(Color)))
+                    if (board.cellsGrid[row + 1][column].isTherePiece && !(board.cellsGrid[row + 1][column].color.equals(color)))
                     {
-                        if (other_group.Piece_location(Row_Number + 1, Column_Number) != null
-                        && !other_group.Piece_location(Row_Number + 1, Column_Number).IsDeleted
-                        && other_group.Piece_location(Row_Number + 1, Column_Number).Type.equals("Pawn"))
+                        if (otherGroup.Piece_location(row + 1, column) != null
+                        && !otherGroup.Piece_location(row + 1, column).isDeleted
+                        && otherGroup.Piece_location(row + 1, column).type.equals(PieceType.Pawn))
                         {
-                            if (((Pawn)other_group.Piece_location(Row_Number + 1, Column_Number)).moved_two_cells)
+                            if (((Pawn)otherGroup.Piece_location(row + 1, column)).moved_two_cells)
                             {
-                                Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number,
-                                Column_Number, Row_Number + 1, Column_Number + 1 - 2 * is_board_turned_up, is_white_turn, "Pawn");
-                                number_of_valid_moves++;
+                                groupMoves.push(new Move(row,
+                                column, row + 1, column + 1 - 2 * is_board_turned_up, color, PieceType.Pawn));
                             }
                         }
                     }
                 }
             }
         }
-        return number_of_valid_moves;
     }
 }

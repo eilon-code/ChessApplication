@@ -1,30 +1,31 @@
 package com.mygdx.jar.gameObjects.BoardObjects;
 
-import java.util.Objects;
+import com.mygdx.jar.gameObjects.GamePieces.Color;
+import com.mygdx.jar.gameObjects.GamePieces.PieceType;
 
 public class Cell {
-    public int Row_Number;
-    public int Column_Number;
-    public boolean Is_there_Piece;
-    public String Color_piece;
-    public String Type;
+    public final int row;
+    public final int column;
+    public boolean isTherePiece;
+    public Color color;
+    public PieceType type;
 
-    public Cell(int x, int y, boolean is_there_piece, String color, String piece_type)
+    public Cell(int row, int column, boolean isTherePiece, Color color, PieceType pieceType)
     {
-        Row_Number = x;
-        Column_Number = y;
-        Is_there_Piece = is_there_piece;
-        Color_piece = color;
-        Type = piece_type;
+        this.row = row;
+        this.column = column;
+        this.isTherePiece = isTherePiece;
+        this.color = color;
+        this.type = pieceType;
     }
 
     public Cell(Cell original_cell)
     {
-        Row_Number = original_cell.Row_Number;
-        Column_Number = original_cell.Column_Number;
-        Is_there_Piece = original_cell.Is_there_Piece;
-        Color_piece = original_cell.Color_piece;
-        Type = original_cell.Type;
+        this.row = original_cell.row;
+        this.column = original_cell.column;
+        this.isTherePiece = original_cell.isTherePiece;
+        this.color = original_cell.color;
+        this.type = original_cell.type;
     }
 
     @Override
@@ -32,6 +33,6 @@ public class Cell {
         if (this == o) return true;
         if (!(o instanceof Cell)) return false;
         Cell cell = (Cell) o;
-        return Row_Number == cell.Row_Number && Column_Number == cell.Column_Number && Is_there_Piece == cell.Is_there_Piece && Color_piece.equals(cell.Color_piece) && Type.equals(cell.Type);
+        return row == cell.row && column == cell.column && isTherePiece == cell.isTherePiece && color.equals(cell.color) && type.equals(cell.type);
     }
 }

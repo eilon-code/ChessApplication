@@ -20,23 +20,23 @@ public class DetectionThread extends Thread{
                     return;
                 }
                 System.out.println("Run");
-                String previousTitle = board.Title;
-                board.Title = Board.TitleCheck;
+                String previousTitle = board.title;
+                board.title = Board.TitleCheck;
 
                 PositionCheck positionChecker = new PositionCheck(board);
                 if (positionChecker.IsTitleFit(title)){
                     System.out.println("Title Match");
-                    board.Title = Board.TitleFit;
+                    board.title = Board.TitleFit;
                 }
                 else {
                     System.out.println("Title Doesn't Match");
-                    board.Title = Board.TitleNotFit;
+                    board.title = Board.TitleNotFit;
                     try {
                         sleep(2000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    board.Title = previousTitle;
+                    board.title = previousTitle;
                 }
             }
         });

@@ -1,174 +1,78 @@
 package com.mygdx.jar.gameObjects.GamePieces;
 
 import com.mygdx.jar.gameObjects.BoardObjects.Board;
-import com.mygdx.jar.gameObjects.BoardObjects.Group_of_pieces;
+import com.mygdx.jar.gameObjects.BoardObjects.GroupOfPieces;
 import com.mygdx.jar.gameObjects.BoardObjects.Move;
+import com.mygdx.jar.gameObjects.BoardObjects.Point;
 
-// public class Knight extends Piece
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Stack;
+
 public class Knight extends Piece
 {
-    public Knight(String color, int x, int y, int piece_num, int number_of_moves)
+    public Knight(Color color, int row, int column, int pieceNum, int numberOfMoves)
     {
-        super("Knight", color, x, y, piece_num, false, number_of_moves);
+        super(PieceType.Knight, color, row, column, pieceNum, false, numberOfMoves);
     }
 
-    public Knight(Piece original_knight)
+    public Knight(Piece originalKnight)
     {
-        super(original_knight);
+        super(originalKnight);
     }
 
     @Override
-    public int Get_Max_Number_Of_Moves_On_Board()
+    public int getMaxNumberOfMovesOnBoard()
     {
         return 8;
     }
 
     @Override
-    public int Fill_All_In_Board_Moves(Move[] Group_moves, int current_index, boolean is_white_turn,
-                                       boolean Is_white_up, Board chess_board, Group_of_pieces other_group, Group_of_pieces group)
+    public void fillPieceMoves(Stack<Move> groupMoves, boolean is_white_turn,
+                               boolean Is_white_up, Board board, GroupOfPieces otherGroup, GroupOfPieces group)
     {
-        int number_of_valid_moves = 0;
+        Queue<Point> directions = new LinkedList<>();
+        directions.add(new Point(2, 1));
+        directions.add(new Point(2, -1));
+        directions.add(new Point(-2, 1));
+        directions.add(new Point(-2, -1));
+        directions.add(new Point(1, 2));
+        directions.add(new Point(1, -2));
+        directions.add(new Point(-1, 2));
+        directions.add(new Point(-1, -2));
+        directions.add(new Point(0, 0));
 
-        if (Row_Number > 0)
-        {
-            if (Column_Number < 6)
-            {
-                if (chess_board.The_Grid[Row_Number - 1][Column_Number + 2].Is_there_Piece)
-                {
-                    if (chess_board.The_Grid[Row_Number - 1][Column_Number + 2].Color_piece == "black" ^ is_white_turn == false)
-                    {
-                    Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - 1, Column_Number + 2, is_white_turn, "Knight");
-                    number_of_valid_moves++;
-                    }
-                }
-                else
-                {
-                    Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - 1, Column_Number + 2, is_white_turn, "Knight");
-                    number_of_valid_moves++;
-                }
+        int radius = 1;
+        while (directions.size() > 1){
+            if (directions.peek().equals(new Point(0, 0))){
+                break;
             }
-            if (Column_Number > 1)
-            {
-                if (chess_board.The_Grid[Row_Number - 1][Column_Number - 2].Is_there_Piece)
-                {
-                    if (chess_board.The_Grid[Row_Number - 1][Column_Number - 2].Color_piece == "black" ^ is_white_turn == false)
-                    {
-                        Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - 1, Column_Number - 2, is_white_turn, "Knight");
-                        number_of_valid_moves++;
-                    }
-                }
-                else
-                {
-                    Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - 1, Column_Number - 2, is_white_turn, "Knight");
-                    number_of_valid_moves++;
-                }
+            Point cellInCheck = new Point(directions.peek());
+            cellInCheck.X *= radius;
+            cellInCheck.Y *= radius;
+            cellInCheck.X += row;
+            cellInCheck.Y += column;
+            if (cellInCheck.X < 0 || cellInCheck.X >= Board.BoardSize ||
+                    cellInCheck.Y < 0 || cellInCheck.Y >= Board.BoardSize){
+                directions.remove();
+                continue;
             }
-            if (Row_Number > 1)
+            if (board.cellsGrid[cellInCheck.X][cellInCheck.Y].isTherePiece)
             {
-                if (Column_Number < 7)
-                {
-                    if (chess_board.The_Grid[Row_Number - 2][Column_Number + 1].Is_there_Piece)
-                    {
-                        if (chess_board.The_Grid[Row_Number - 2][Column_Number + 1].Color_piece == "black" ^ is_white_turn == false)
-                        {
-                            Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - 2, Column_Number + 1, is_white_turn, "Knight");
-                            number_of_valid_moves++;
-                        }
-                    }
-                    else
-                    {
-                        Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - 2, Column_Number + 1, is_white_turn, "Knight");
-                        number_of_valid_moves++;
-                    }
+                if (!board.cellsGrid[cellInCheck.X][cellInCheck.Y].color.equals(color)) {
+                    groupMoves.push(new Move(row, column, cellInCheck.X, cellInCheck.Y, color, type));
                 }
-                if (Column_Number > 0)
-                {
-                    if (chess_board.The_Grid[Row_Number - 2][Column_Number - 1].Is_there_Piece)
-                    {
-                        if (chess_board.The_Grid[Row_Number - 2][Column_Number - 1].Color_piece == "black" ^ is_white_turn == false)
-                        {
-                            Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - 2, Column_Number - 1, is_white_turn, "Knight");
-                            number_of_valid_moves++;
-                        }
-                    }
-                    else
-                    {
-                        Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - 2, Column_Number - 1, is_white_turn, "Knight");
-                        number_of_valid_moves++;
-                    }
-                }
+                directions.remove();
+                continue;
             }
+            else
+            {
+                groupMoves.push(new Move(row, column, cellInCheck.X, cellInCheck.Y, color, type));
+            }
+            directions.add(directions.remove());
         }
-        if (Row_Number < 7)
-        {
-            if (Column_Number < 6)
-            {
-                if (chess_board.The_Grid[Row_Number + 1][Column_Number + 2].Is_there_Piece)
-                {
-                    if (chess_board.The_Grid[Row_Number + 1][Column_Number + 2].Color_piece == "black" ^ is_white_turn == false)
-                    {
-                        Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + 1, Column_Number + 2, is_white_turn, "Knight");
-                        number_of_valid_moves++;
-                    }
-                }
-                else
-                {
-                    Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + 1, Column_Number + 2, is_white_turn, "Knight");
-                    number_of_valid_moves++;
-                }
-            }
-            if (Column_Number > 1)
-            {
-                if (chess_board.The_Grid[Row_Number + 1][Column_Number - 2].Is_there_Piece)
-                {
-                    if (chess_board.The_Grid[Row_Number + 1][Column_Number - 2].Color_piece == "black" ^ is_white_turn == false)
-                    {
-                        Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + 1, Column_Number - 2, is_white_turn, "Knight");
-                        number_of_valid_moves++;
-                    }
-                }
-                else
-                {
-                    Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + 1, Column_Number - 2, is_white_turn, "Knight");
-                    number_of_valid_moves++;
-                }
-            }
-            if (Row_Number < 6)
-            {
-                if (Column_Number < 7)
-                {
-                    if (chess_board.The_Grid[Row_Number + 2][Column_Number + 1].Is_there_Piece)
-                    {
-                        if (chess_board.The_Grid[Row_Number + 2][Column_Number + 1].Color_piece == "black" ^ is_white_turn == false)
-                        {
-                            Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + 2, Column_Number + 1, is_white_turn, "Knight");
-                            number_of_valid_moves++;
-                        }
-                    }
-                    else
-                    {
-                        Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + 2, Column_Number + 1, is_white_turn, "Knight");
-                        number_of_valid_moves++;
-                    }
-                }
-                if (Column_Number > 0)
-                {
-                    if (chess_board.The_Grid[Row_Number + 2][Column_Number - 1].Is_there_Piece)
-                    {
-                        if (chess_board.The_Grid[Row_Number + 2][Column_Number - 1].Color_piece == "black" ^ is_white_turn == false)
-                        {
-                            Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + 2, Column_Number - 1, is_white_turn, "Knight");
-                            number_of_valid_moves++;
-                        }
-                    }
-                    else
-                    {
-                        Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + 2, Column_Number - 1, is_white_turn, "Knight");
-                        number_of_valid_moves++;
-                    }
-                }
-            }
+        while (!directions.isEmpty()){
+            directions.remove();
         }
-        return number_of_valid_moves;
     }
 }

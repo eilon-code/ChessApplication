@@ -3,12 +3,15 @@ package com.mygdx.jar;
 import com.mygdx.jar.gameObjects.BoardObjects.Board;
 import com.mygdx.jar.gameObjects.BoardObjects.BoardCell;
 import com.mygdx.jar.gameObjects.BoardObjects.Cell;
-import com.mygdx.jar.gameObjects.BoardObjects.Group_of_pieces;
+import com.mygdx.jar.gameObjects.BoardObjects.GroupOfPieces;
 import com.mygdx.jar.gameObjects.BoardObjects.Move;
 import com.mygdx.jar.gameObjects.BoardObjects.Point;
 import com.mygdx.jar.gameObjects.BoardObjects.Position;
+import com.mygdx.jar.gameObjects.GamePieces.Color;
+import com.mygdx.jar.gameObjects.GamePieces.PieceType;
 
 import java.util.Random;
+import java.util.Stack;
 
 public class ChessGame {
     private static Cell Previous_cell;
@@ -24,7 +27,7 @@ public class ChessGame {
     private int sum_current_legal_moves;
     private Point lastRedLocation;
 
-    private Move[] all_legal_moves;
+    private Stack<Move> all_legal_moves;
 
     // 2D array of buttons whose values are determined by My_Board
     public static BoardCell[][] BoardCellsGrid;
@@ -37,12 +40,12 @@ public class ChessGame {
         int[] listPieces;
         listPieces = FisherChess(isFisherChess, boardSize);
 
-        Group_of_pieces white_pieces = new Group_of_pieces("white", (is_white_up ? 1 : 0), listPieces);
-        Group_of_pieces black_pieces = new Group_of_pieces("black", (is_white_up ? 0 : 1), listPieces);
+        GroupOfPieces white_pieces = new GroupOfPieces(Color.White, (is_white_up ? 1 : 0), listPieces);
+        GroupOfPieces black_pieces = new GroupOfPieces(Color.Black, (is_white_up ? 0 : 1), listPieces);
 
-        Board board = new Board(boardSize, white_pieces, black_pieces, true);
+        Board board = new Board(white_pieces, black_pieces, Color.White);
 
-        new Position(board, white_pieces, black_pieces, is_white_start, is_white_up);
+        new Position(board);
 
         Current_cell = null;
         Previous_cell = null;
@@ -53,7 +56,7 @@ public class ChessGame {
 
         // Click_counted_on_same_cell = 1;
 
-        BoardCellsGrid = new BoardCell[Position.boardSize][Position.boardSize];
+        BoardCellsGrid = new BoardCell[Board.BoardSize][Board.BoardSize];
         ResetGraphicsCellsArray();
 
         newMoves();
@@ -71,10 +74,21 @@ public class ChessGame {
 
         // Click_counted_on_same_cell = 1;
 
-        BoardCellsGrid = new BoardCell[Position.boardSize][Position.boardSize];
+        BoardCellsGrid = new BoardCell[Board.BoardSize][Board.BoardSize];
+
         ResetGraphicsCellsArray();
+        System.out.println("\nCheck 1:");
+        Position.compareBoardToPosition(board);
+
+        GroupOfPieces white_pieces = new GroupOfPieces(board, Color.White);
+        GroupOfPieces black_pieces = new GroupOfPieces(board, Color.Black);
+        Board boardNew = new Board(white_pieces, black_pieces, Color.White);
+        System.out.println("\nCheck 2:");
+        Position.compareBoardToPosition(boardNew);
 
         newMoves();
+        System.out.println("\nCheck 3:");
+        Position.compareBoardToPosition(board);
     }
 
     public void ClickDuringGame(Point location)
@@ -86,7 +100,7 @@ public class ChessGame {
 
         WinPawn = false;
         SomePieceMoved = false;
-        Current_cell = new Cell(Position.Chess_Board.The_Grid[x][y]);
+        Current_cell = new Cell(Position.board.cellsGrid[x][y]);
         Current_legal_moves = null;
 
         if (Previous_legal_moves != null)
@@ -94,7 +108,7 @@ public class ChessGame {
             for (Move legal_move : Previous_legal_moves) {
                 if (legal_move != null) {
                     // rules of activate legal move:
-                    if (legal_move.Next_row == Current_cell.Row_Number && legal_move.Next_column == Current_cell.Column_Number) {
+                    if (legal_move.endRow == Current_cell.row && legal_move.endColumn == Current_cell.column) {
                         // update move to all calculation classes (like: Board, Group_od_pieces, Position...):
                         SomePieceMoved = true;
                         WinPawn = UpdateMoveToGameClasses(legal_move);
@@ -108,13 +122,13 @@ public class ChessGame {
             }
         }
 
-        if (Current_cell.Color_piece.equals("black") ^ Position.Is_white_turn){
+        if (Current_cell.color.equals(Position.colorTurn)){
             Current_legal_moves = new Move[28];
             int current_move = 0;
             // detect the list of all the available legal moves with the chosen piece from the list of all the legal moves
             for (Move legal_move : all_legal_moves) {
                 if (legal_move != null) {
-                    if (legal_move.Current_row == Current_cell.Row_Number && legal_move.Current_column == Current_cell.Column_Number) {
+                    if (legal_move.startRow == Current_cell.row && legal_move.startColumn == Current_cell.column) {
                         Current_legal_moves[current_move] = legal_move;
                         current_move++;
                     }
@@ -132,7 +146,7 @@ public class ChessGame {
 
         // cases of clicks (legal moves, previous legal moves, previous_cell...)
         if (Previous_cell != null) {
-            if (Previous_cell.Row_Number == Current_cell.Row_Number && Previous_cell.Column_Number == Current_cell.Column_Number) {
+            if (Previous_cell.row == Current_cell.row && Previous_cell.column == Current_cell.column) {
                 Click_counted_on_same_cell++;
             }
             else
@@ -144,15 +158,15 @@ public class ChessGame {
         {
             Click_counted_on_same_cell = 1;
         }
-        if (Click_counted_on_same_cell % 2 == 1 && (Current_cell.Color_piece.equals("black") ^ Position.Is_white_turn)){
-            if (Current_cell.Is_there_Piece){
-                BoardCellsGrid[Current_cell.Row_Number][Current_cell.Column_Number].BackgroundColor = "brown";
+        if (Click_counted_on_same_cell % 2 == 1 && (Current_cell.color.equals(Position.colorTurn))){
+            if (Current_cell.isTherePiece){
+                BoardCellsGrid[Current_cell.row][Current_cell.column].BackgroundColor = "brown";
             }
         }
 
         RemoveUnRelevantLegalMoveOptions();
         PreviousMoveToPurple();
-        if (Current_cell.Is_there_Piece && (Current_cell.Color_piece.equals("black") ^ Position.Is_white_turn))
+        if (Current_cell.isTherePiece && (Current_cell.color.equals(Position.colorTurn)))
         {
             if (Click_counted_on_same_cell % 2 == 1)
             {
@@ -160,7 +174,7 @@ public class ChessGame {
                 for (int index = 0; index < sum_current_legal_moves; index++)
                 {
                     if (Current_legal_moves[index] != null) {
-                        BoardCellsGrid[Current_legal_moves[index].Next_row][Current_legal_moves[index].Next_column].BackgroundColor = "green";
+                        BoardCellsGrid[Current_legal_moves[index].endRow][Current_legal_moves[index].endColumn].BackgroundColor = "green";
                     }
                 }
                 Previous_legal_moves = Current_legal_moves;
@@ -177,13 +191,15 @@ public class ChessGame {
         {
             Previous_cell = Current_cell;
         }
+        System.out.println("At Point: (" + Current_cell.row + ", " + Current_cell.column + ")");
+        System.out.println("There Is" + (Current_cell.isTherePiece ? Current_cell.type : PieceType.None));
     }
 
     public static int CountClicksOnSameCell_AfterCell(Point cell)
     {
         // cases of clicks (legal moves, previous legal moves, previous_cell...)
         if (Current_cell != null) {
-            if (cell.X == Current_cell.Row_Number && cell.Y == Current_cell.Column_Number) {
+            if (cell.X == Current_cell.row && cell.Y == Current_cell.column) {
                 return Click_counted_on_same_cell + 1;
             }
             else
@@ -200,22 +216,14 @@ public class ChessGame {
     private void newMoves(){
         // determine legal next moves
         all_legal_moves = Position.Get_all_legal_moves();
-
-        int sum_legal_moves = 0;
-        // detect the number of all the available legal moves from the list of all the legal moves
-        for (Move move : all_legal_moves) {
-            if (move != null) {
-                sum_legal_moves++;
-            }
-        }
-        GameOver = !(sum_legal_moves > 0);
+        GameOver = all_legal_moves.empty();
     }
 
-    public void PawnChangedInto(String type)
+    public void PawnChangedInto(PieceType type)
     {
         WinPawn = false;
         Position.DeclarePawnCrown_in_real(type);
-        BoardCellsGrid[Current_cell.Row_Number][Current_cell.Column_Number].PieceType = type;
+        BoardCellsGrid[Current_cell.row][Current_cell.column].type = type;
         newMoves();
     }
 
@@ -232,10 +240,10 @@ public class ChessGame {
                 BoardCellsGrid[lastRedLocation.X][lastRedLocation.Y].BackgroundColor = "black";
             }
         }
-        if (Position.KingAtDanger != null && !WinPawn)
+        if (Position.kingAtDanger != null && !WinPawn)
         {
-            BoardCellsGrid[Position.KingAtDanger.X][Position.KingAtDanger.Y].BackgroundColor = "red";
-            lastRedLocation = new Point(Position.KingAtDanger);
+            BoardCellsGrid[Position.kingAtDanger.X][Position.kingAtDanger.Y].BackgroundColor = "red";
+            lastRedLocation = new Point(Position.kingAtDanger);
             return;
         }
         lastRedLocation = null;
@@ -250,69 +258,69 @@ public class ChessGame {
         // update move to btnGrid (the output of graphics):
         UpdateMoveToGraphicsArray();
 
-        return move.Crowning_pawn;
+        return move.crowningPawn;
     }
 
     private void UpdateMoveToGraphicsArray()
     {
         // King and Rook moved both (castle):
-        if (Previous_cell.Type.equals("King") && Current_cell.Type == "Rook" && Previous_cell.Color_piece == Current_cell.Color_piece)
+        if (Previous_cell.type.equals(PieceType.King) && Current_cell.type.equals(PieceType.Rook) && Previous_cell.color.equals(Current_cell.color))
         {
-            String colorPiece = Previous_cell.Color_piece;
-            if (Previous_cell.Row_Number - Current_cell.Row_Number > 0)
+            Color colorPiece = Previous_cell.color;
+            if (Previous_cell.row - Current_cell.row > 0)
             {
-                BoardCellsGrid[Current_cell.Row_Number][Current_cell.Column_Number].PieceColor = "";
-                BoardCellsGrid[Current_cell.Row_Number][Current_cell.Column_Number].PieceType = "";
+                BoardCellsGrid[Current_cell.row][Current_cell.column].pieceColor = Color.None;
+                BoardCellsGrid[Current_cell.row][Current_cell.column].type = PieceType.None;
 
-                BoardCellsGrid[3][Current_cell.Column_Number].PieceColor = colorPiece;
-                BoardCellsGrid[3][Current_cell.Column_Number].PieceType = "Rook";
+                BoardCellsGrid[3][Current_cell.column].pieceColor = colorPiece;
+                BoardCellsGrid[3][Current_cell.column].type = PieceType.Rook;
 
-                if (Previous_cell.Row_Number != 3){
-                    BoardCellsGrid[Previous_cell.Row_Number][Previous_cell.Column_Number].PieceColor = "";
-                    BoardCellsGrid[Previous_cell.Row_Number][Previous_cell.Column_Number].PieceType = "";
+                if (Previous_cell.row != 3){
+                    BoardCellsGrid[Previous_cell.row][Previous_cell.column].pieceColor = Color.None;
+                    BoardCellsGrid[Previous_cell.row][Previous_cell.column].type = PieceType.None;
                 }
 
-                BoardCellsGrid[2][Previous_cell.Column_Number].PieceColor = colorPiece;
-                BoardCellsGrid[2][Previous_cell.Column_Number].PieceType = "King";
+                BoardCellsGrid[2][Previous_cell.column].pieceColor = colorPiece;
+                BoardCellsGrid[2][Previous_cell.column].type = PieceType.King;
             }
             else
             {
-                BoardCellsGrid[Current_cell.Row_Number][Current_cell.Column_Number].PieceColor = "";
-                BoardCellsGrid[Current_cell.Row_Number][Current_cell.Column_Number].PieceType = "";
+                BoardCellsGrid[Current_cell.row][Current_cell.column].pieceColor = Color.None;
+                BoardCellsGrid[Current_cell.row][Current_cell.column].type = PieceType.None;
 
-                BoardCellsGrid[5][Current_cell.Column_Number].PieceColor = colorPiece;
-                BoardCellsGrid[5][Current_cell.Column_Number].PieceType = "Rook";
+                BoardCellsGrid[5][Current_cell.column].pieceColor = colorPiece;
+                BoardCellsGrid[5][Current_cell.column].type = PieceType.Rook;
 
-                if (Previous_cell.Row_Number != 5){
-                    BoardCellsGrid[Previous_cell.Row_Number][Previous_cell.Column_Number].PieceColor = "";
-                    BoardCellsGrid[Previous_cell.Row_Number][Previous_cell.Column_Number].PieceType = "";
+                if (Previous_cell.row != 5){
+                    BoardCellsGrid[Previous_cell.row][Previous_cell.column].pieceColor = Color.None;
+                    BoardCellsGrid[Previous_cell.row][Previous_cell.column].type = PieceType.None;
                 }
 
-                BoardCellsGrid[6][Previous_cell.Column_Number].PieceColor = colorPiece;
-                BoardCellsGrid[6][Previous_cell.Column_Number].PieceType = "King";
+                BoardCellsGrid[6][Previous_cell.column].pieceColor = colorPiece;
+                BoardCellsGrid[6][Previous_cell.column].type = PieceType.King;
             }
         }
         else {
             // Pawn kills other pawn by go to empty cell:
-            if (Previous_cell.Type == "Pawn" && Previous_cell.Row_Number != Current_cell.Row_Number && !Current_cell.Is_there_Piece)
+            if (Previous_cell.type.equals(PieceType.Pawn) && Previous_cell.row != Current_cell.row && !Current_cell.isTherePiece)
             {
-                BoardCellsGrid[Current_cell.Row_Number][Previous_cell.Column_Number].PieceColor = "";
-                BoardCellsGrid[Current_cell.Row_Number][Previous_cell.Column_Number].PieceType = "";
+                BoardCellsGrid[Current_cell.row][Previous_cell.column].pieceColor = Color.None;
+                BoardCellsGrid[Current_cell.row][Previous_cell.column].type = PieceType.None;
             }
 
-            BoardCellsGrid[Current_cell.Row_Number][Current_cell.Column_Number].PieceColor = Previous_cell.Color_piece;
-            BoardCellsGrid[Current_cell.Row_Number][Current_cell.Column_Number].PieceType = Previous_cell.Type;
+            BoardCellsGrid[Current_cell.row][Current_cell.column].pieceColor = Previous_cell.color;
+            BoardCellsGrid[Current_cell.row][Current_cell.column].type = Previous_cell.type;
 
-            BoardCellsGrid[Previous_cell.Row_Number][Previous_cell.Column_Number].PieceColor = "";
-            BoardCellsGrid[Previous_cell.Row_Number][Previous_cell.Column_Number].PieceType = "";
+            BoardCellsGrid[Previous_cell.row][Previous_cell.column].pieceColor = Color.None;
+            BoardCellsGrid[Previous_cell.row][Previous_cell.column].type = PieceType.None;
         }
     }
 
     private void RenderGraphicsArray(){
-        for (int row = 0; row < Position.boardSize; row++){
-            for (int column = 0; column < Position.boardSize; column++){
-                BoardCellsGrid[row][column].PieceColor = Position.Chess_Board.The_Grid[row][column].Color_piece;
-                BoardCellsGrid[row][column].PieceType = Position.Chess_Board.The_Grid[row][column].Type;
+        for (int row = 0; row < Board.BoardSize; row++){
+            for (int column = 0; column < Board.BoardSize; column++){
+                BoardCellsGrid[row][column].pieceColor = Position.board.cellsGrid[row][column].color;
+                BoardCellsGrid[row][column].type = Position.board.cellsGrid[row][column].type;
             }
         }
     }
@@ -323,23 +331,23 @@ public class ChessGame {
         {
             for (Move previous_legal_move : Previous_legal_moves) {
                 if (previous_legal_move != null) {
-                    if (previous_legal_move.Next_row % 2 == 0 ^ previous_legal_move.Next_column % 2 == 0) {
-                        BoardCellsGrid[previous_legal_move.Next_row][previous_legal_move.Next_column].BackgroundColor = "white";
+                    if (previous_legal_move.endRow % 2 == 0 ^ previous_legal_move.endColumn % 2 == 0) {
+                        BoardCellsGrid[previous_legal_move.endRow][previous_legal_move.endColumn].BackgroundColor = "white";
                     } else {
-                        BoardCellsGrid[previous_legal_move.Next_row][previous_legal_move.Next_column].BackgroundColor = "black";
+                        BoardCellsGrid[previous_legal_move.endRow][previous_legal_move.endColumn].BackgroundColor = "black";
                     }
                 }
             }
             Previous_legal_moves = null;
-            if (!(new Point(Previous_cell)).equals(Position.KingAtDanger)){
-                if (Previous_cell.Row_Number % 2 == 0 ^ Previous_cell.Column_Number % 2 == 0) {
-                    BoardCellsGrid[Previous_cell.Row_Number][Previous_cell.Column_Number].BackgroundColor = "white";
+            if (!(new Point(Previous_cell)).equals(Position.kingAtDanger)){
+                if (Previous_cell.row % 2 == 0 ^ Previous_cell.column % 2 == 0) {
+                    BoardCellsGrid[Previous_cell.row][Previous_cell.column].BackgroundColor = "white";
                 } else {
-                    BoardCellsGrid[Previous_cell.Row_Number][Previous_cell.Column_Number].BackgroundColor = "black";
+                    BoardCellsGrid[Previous_cell.row][Previous_cell.column].BackgroundColor = "black";
                 }
             }
             else {
-                BoardCellsGrid[Previous_cell.Row_Number][Previous_cell.Column_Number].BackgroundColor = "red";
+                BoardCellsGrid[Previous_cell.row][Previous_cell.column].BackgroundColor = "red";
             }
         }
     }
@@ -377,9 +385,9 @@ public class ChessGame {
     private void ResetGraphicsCellsArray()
     {
         // nested loops. create buttons and print them to the scren
-        for (int i = 0; i < Position.boardSize; i++)
+        for (int i = 0; i < Board.BoardSize; i++)
         {
-            for (int j = 0; j < Position.boardSize; j++)
+            for (int j = 0; j < Board.BoardSize; j++)
             {
                 BoardCellsGrid[i][j] = new BoardCell();
                 if (i % 2 == 0 ^ j % 2 == 0)
@@ -392,8 +400,8 @@ public class ChessGame {
                 }
 
                 // set the text for the new button
-                BoardCellsGrid[i][j].PieceType = Position.Chess_Board.The_Grid[i][j].Type;
-                BoardCellsGrid[i][j].PieceColor = Position.Chess_Board.The_Grid[i][j].Color_piece;
+                BoardCellsGrid[i][j].type = Position.board.cellsGrid[i][j].type;
+                BoardCellsGrid[i][j].pieceColor = Position.board.cellsGrid[i][j].color;
             }
         }
     }

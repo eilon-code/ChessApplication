@@ -1,13 +1,11 @@
 package com.mygdx.jar.gameObjects.BoardObjects;
 
+import com.mygdx.jar.gameObjects.GamePieces.Color;
 import com.mygdx.jar.gameObjects.GamePieces.Piece;
-
-import java.util.Arrays;
-import java.util.Objects;
+import com.mygdx.jar.gameObjects.GamePieces.PieceType;
 
 public class Board {
-    // the size of the board is  8*8 (chess board)
-    public static int BoardSize;
+    public static final int BoardSize = 8;
     public static final String NonTitle = "התאם כותרת לעמדה";
     public static final String TitleNotFit = "הכותרת לא מתאימה לעמדה";
     public static final String TitleCheck = "בודק התאמת כותרת לעמדה";
@@ -15,72 +13,71 @@ public class Board {
     public static final String Nothing = "?";
 
     // 2D array of type Cell
-    public Cell[][] The_Grid;
-    public boolean IsWhiteTurn;
-    public String Title;
+    public Cell[][] cellsGrid;
+    public Color startingColor;
+    public String title;
 
     // constructor
-    public Board (int boardSize, Group_of_pieces group, Group_of_pieces other_group, boolean isWhiteTurn)
+    public Board(GroupOfPieces group, GroupOfPieces otherGroup, Color startingColor)
     {
-        BoardSize = boardSize;
-        IsWhiteTurn = isWhiteTurn;
-        Title = NonTitle;
+        this.startingColor = startingColor;
+        this.title = NonTitle;
 
         // create a new 2D array of  type Cell
-        The_Grid = new Cell[BoardSize][BoardSize];
+        this.cellsGrid = new Cell[BoardSize][BoardSize];
 
-        Get_Started(group, other_group);
+        initBoard(group, otherGroup);
     }
 
-    public Board(Board original_board)
+    public Board(Board originalBoard)
     {
-        IsWhiteTurn = original_board.IsWhiteTurn;
-        Title = original_board.Title;
-        The_Grid = new Cell[BoardSize][BoardSize];
+        this.startingColor = originalBoard.startingColor;
+        this.title = originalBoard.title;
+        this.cellsGrid = new Cell[BoardSize][BoardSize];
 
         // fill the 2D array with new Cells
         for (int i = 0; i < BoardSize; i++)
         {
             for (int j = 0; j < BoardSize; j++)
             {
-                The_Grid[i][j] = new Cell(original_board.The_Grid[i][j]);
+                cellsGrid[i][j] = new Cell(originalBoard.cellsGrid[i][j]);
             }
         }
     }
 
     // called each time a move is played
-    public void Update_Board(Group_of_pieces group, Group_of_pieces other_group)
+    public void updateBoard(GroupOfPieces group, GroupOfPieces otherGroup)
     {
         for (int i = 0; i < BoardSize; i++)
         {
             for (int j = 0; j < BoardSize; j++)
             {
                 Piece currentPieceGroup1 = group.Piece_location(i, j);
-                Piece currentPieceGroup2 = other_group.Piece_location(i, j);
-                if (currentPieceGroup1 != null && !currentPieceGroup1.IsDeleted)
+                Piece currentPieceGroup2 = otherGroup.Piece_location(i, j);
+                if (currentPieceGroup1 != null && !currentPieceGroup1.isDeleted)
                 {
-                    The_Grid[i][j].Color_piece = currentPieceGroup1.Color;
-                    The_Grid[i][j].Type = currentPieceGroup1.Type;
-                    The_Grid[i][j].Is_there_Piece = true;
+                    cellsGrid[i][j].color = currentPieceGroup1.color;
+                    cellsGrid[i][j].type = currentPieceGroup1.type;
+                    cellsGrid[i][j].isTherePiece = true;
                 }
-                else if (currentPieceGroup2 != null && !currentPieceGroup2.IsDeleted)
+                else if (currentPieceGroup2 != null && !currentPieceGroup2.isDeleted)
                 {
-                    The_Grid[i][j].Color_piece = currentPieceGroup2.Color;
-                    The_Grid[i][j].Type = currentPieceGroup2.Type;
-                    The_Grid[i][j].Is_there_Piece = true;
+                    cellsGrid[i][j].color = currentPieceGroup2.color;
+                    cellsGrid[i][j].type = currentPieceGroup2.type;
+                    cellsGrid[i][j].isTherePiece = true;
                 }
                 else
                 {
-                    The_Grid[i][j].Color_piece = "";
-                    The_Grid[i][j].Type = "";
-                    The_Grid[i][j].Is_there_Piece = false;
+                    cellsGrid[i][j].color = Color.None;
+                    cellsGrid[i][j].type = PieceType.None;
+                    cellsGrid[i][j].isTherePiece = false;
                 }
             }
         }
     }
 
     // called when the game starts
-    public void Get_Started(Group_of_pieces group, Group_of_pieces other_group)
+    public void initBoard(GroupOfPieces group, GroupOfPieces other_group)
     {
         // fill the 2D array with new Cells
         for (int i = 0; i < BoardSize; i++)
@@ -89,28 +86,28 @@ public class Board {
             {
                 Piece currentPieceGroup1 = (group != null ? group.Piece_location(i, j) : null);
                 Piece currentPieceGroup2 = (other_group != null ? other_group.Piece_location(i, j) : null);
-                if (currentPieceGroup1 != null && !currentPieceGroup1.IsDeleted)
+                if (currentPieceGroup1 != null && !currentPieceGroup1.isDeleted)
                 {
-                    The_Grid[i][j] = new Cell(i, j, true, currentPieceGroup1.Color, currentPieceGroup1.Type);
+                    cellsGrid[i][j] = new Cell(i, j, true, currentPieceGroup1.color, currentPieceGroup1.type);
                 }
-                else if (currentPieceGroup2 != null && !currentPieceGroup2.IsDeleted)
+                else if (currentPieceGroup2 != null && !currentPieceGroup2.isDeleted)
                 {
-                    The_Grid[i][j] = new Cell(i, j, true, currentPieceGroup2.Color, currentPieceGroup2.Type);
+                    cellsGrid[i][j] = new Cell(i, j, true, currentPieceGroup2.color, currentPieceGroup2.type);
                 }
                 else
                 {
-                    The_Grid[i][j] = new Cell(i, j, false, "", "");
+                    cellsGrid[i][j] = new Cell(i, j, false, Color.None, PieceType.None);
                 }
             }
         }
     }
 
-    public boolean hasKing(String color) {
+    public boolean hasKing(Color color) {
         for (int i = 0; i < BoardSize; i++){
             for (int j = 0; j < BoardSize; j++){
-                if (The_Grid[i][j].Is_there_Piece &&
-                        The_Grid[i][j].Color_piece.equals(color) &&
-                        The_Grid[i][j].Type.equals("King")){
+                if (cellsGrid[i][j].isTherePiece &&
+                        cellsGrid[i][j].color.equals(color) &&
+                        cellsGrid[i][j].type.equals(PieceType.King)){
                     return true;
                 }
             }
@@ -125,11 +122,11 @@ public class Board {
         Board board = (Board) o;
         for (int i = 0; i < BoardSize; i++){
             for (int j = 0; j < BoardSize; j++){
-                if (!The_Grid[i][j].equals(board.The_Grid[i][j])){
+                if (!cellsGrid[i][j].equals(board.cellsGrid[i][j])){
                     return false;
                 }
             }
         }
-        return IsWhiteTurn == board.IsWhiteTurn;
+        return startingColor == board.startingColor;
     }
 }

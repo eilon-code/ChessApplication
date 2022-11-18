@@ -9,6 +9,8 @@ import androidx.annotation.Nullable;
 
 import com.mygdx.jar.gameObjects.BoardObjects.Board;
 import com.mygdx.jar.gameObjects.BoardObjects.Cell;
+import com.mygdx.jar.gameObjects.GamePieces.Color;
+import com.mygdx.jar.gameObjects.GamePieces.PieceType;
 
 import java.util.Stack;
 
@@ -63,13 +65,13 @@ class SQLiteDataBaseHandler extends SQLiteOpenHelper {
         System.out.println("id board = " + row_id);
 
         cv.put(COLUMN_ID, row_id);
-        cv.put(COLUMN_STARTING_COLOR, board.IsWhiteTurn);
-        cv.put(COLUMN_TITLE, board.Title);
+        cv.put(COLUMN_STARTING_COLOR, board.startingColor.equals(Color.White));
+        cv.put(COLUMN_TITLE, board.title);
         for (int i = 0; i < A_TO_H.length; i++){
             for (int j = 0; j < ONE_TO_EIGHT.length; j++){
-                Cell cell = board.The_Grid[i][j];
-                if (cell.Is_there_Piece){
-                    cv.put(COLUMN_DESCRIPTION[i][j], cell.Color_piece + " " + cell.Type);
+                Cell cell = board.cellsGrid[i][j];
+                if (cell.isTherePiece){
+                    cv.put(COLUMN_DESCRIPTION[i][j], cell.color + " " + cell.type);
                 }
                 else{
                     cv.put(COLUMN_DESCRIPTION[i][j], Board.Nothing);
@@ -87,13 +89,13 @@ class SQLiteDataBaseHandler extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
 
-        cv.put(COLUMN_STARTING_COLOR, board.IsWhiteTurn);
-        cv.put(COLUMN_TITLE, board.Title);
+        cv.put(COLUMN_STARTING_COLOR, board.startingColor.equals(Color.White));
+        cv.put(COLUMN_TITLE, board.title);
         for (int i = 0; i < A_TO_H.length; i++){
             for (int j = 0; j < ONE_TO_EIGHT.length; j++){
-                Cell cell = board.The_Grid[i][j];
-                if (cell.Is_there_Piece){
-                    cv.put(COLUMN_DESCRIPTION[i][j], cell.Color_piece + " " + cell.Type);
+                Cell cell = board.cellsGrid[i][j];
+                if (cell.isTherePiece){
+                    cv.put(COLUMN_DESCRIPTION[i][j], cell.color + " " + cell.type);
                 }
                 else{
                     cv.put(COLUMN_DESCRIPTION[i][j], Board.Nothing);
@@ -113,22 +115,50 @@ class SQLiteDataBaseHandler extends SQLiteOpenHelper {
         Cursor cursor = db.rawQuery(query, null);
         if (cursor.moveToFirst()) {
             do {
-                Board board = new Board(A_TO_H.length, null, null, true);
+                Board board = new Board(null, null, Color.White);
                 for (int i = 0; i < A_TO_H.length; i++) {
                     for (int j = 0; j < ONE_TO_EIGHT.length; j++) {
                         String cell = cursor.getString(i * A_TO_H.length + j + 1);
                         if (cell.equals(Board.Nothing)) {
-                            board.The_Grid[i][j] = new Cell(i, j, false, "", "");
+                            board.cellsGrid[i][j] = new Cell(i, j, false, Color.None, PieceType.None);
                         } else {
-                            board.The_Grid[i][j] = new Cell(i, j, true, cell.split(" ")[0], cell.split(" ")[1]);
+                            String color = cell.split(" ")[0];
+                            String type = cell.split(" ")[1];
+                            PieceType pieceType = PieceType.None;
+                            switch (type){
+                                case "Pawn":
+                                    pieceType = PieceType.Pawn;
+                                    break;
+
+                                case "Knight":
+                                    pieceType = PieceType.Knight;
+                                    break;
+
+                                case "Bishop":
+                                    pieceType = PieceType.Bishop;
+                                    break;
+
+                                case "Rook":
+                                    pieceType = PieceType.Rook;
+                                    break;
+
+                                case "Queen":
+                                    pieceType = PieceType.Queen;
+                                    break;
+
+                                case "King":
+                                    pieceType = PieceType.King;
+                                    break;
+                            }
+                            board.cellsGrid[i][j] = new Cell(i, j, true, color.equals("White") ? Color.White : Color.Black, pieceType);
                         }
 
                     }
                 }
-                board.IsWhiteTurn = cursor.getInt(A_TO_H.length * ONE_TO_EIGHT.length + 1) == 1;
-                board.Title = cursor.getString(A_TO_H.length * ONE_TO_EIGHT.length + 2);
+                board.startingColor = (cursor.getInt(A_TO_H.length * ONE_TO_EIGHT.length + 1) == 1) ? Color.White : Color.Black;
+                board.title = cursor.getString(A_TO_H.length * ONE_TO_EIGHT.length + 2);
                 allBoards.push(new Board(board));
-                System.out.println("Board ID = " + cursor.getPosition() + " in A1: " + board.The_Grid[0][0].Type);
+                System.out.println("Board ID = " + cursor.getPosition() + " in A1: " + board.cellsGrid[0][0].type);
             } while (cursor.moveToNext());
         }
         cursor.close();

@@ -1,46 +1,34 @@
 package com.mygdx.jar.gameObjects.BoardObjects;
 
 import com.mygdx.jar.gameObjects.GamePieces.Bishop;
+import com.mygdx.jar.gameObjects.GamePieces.Color;
 import com.mygdx.jar.gameObjects.GamePieces.Knight;
 import com.mygdx.jar.gameObjects.GamePieces.Pawn;
 import com.mygdx.jar.gameObjects.GamePieces.Piece;
+import com.mygdx.jar.gameObjects.GamePieces.PieceType;
 import com.mygdx.jar.gameObjects.GamePieces.Queen;
 import com.mygdx.jar.gameObjects.GamePieces.Rook;
 
 import java.util.Stack;
 
 public class Position {
-    public static final int boardSize = Board.BoardSize;
-
-    public static Board Chess_Board;
-    public static Group_of_pieces White_Pieces;
-    public static Group_of_pieces Black_Pieces;
-    public static boolean Is_white_turn;
+    public static Board board;
+    public static GroupOfPieces whitePieces;
+    public static GroupOfPieces blackPieces;
+    public static Color colorTurn;
     public static boolean Is_white_up;
-    public static Point KingAtDanger;
-    private static Stack<Move> RecordedMoves;
-    private static Stack<Move> ReversedMoves;
-
-    public Position(Board chess_board, Group_of_pieces white_pieces, Group_of_pieces black_pieces, boolean White_Turn, boolean white_up)
-    {
-        Chess_Board = chess_board;
-        White_Pieces = white_pieces;
-        Black_Pieces = black_pieces;
-        Is_white_turn = White_Turn;
-        Is_white_up = white_up;
-        RecordedMoves = new Stack<Move>();
-        ReversedMoves = new Stack<Move>();
-        setDangerCell(true);
-    }
+    public static Point kingAtDanger;
+    private static Stack<Move> recordedMoves;
+    private static Stack<Move> reversedMoves;
 
     public Position(Board chess_board) {
-        Chess_Board = new Board(chess_board);
-        White_Pieces = new Group_of_pieces(chess_board, "white");
-        Black_Pieces = new Group_of_pieces(chess_board, "black");
-        Is_white_turn = chess_board.IsWhiteTurn;
+        board = new Board(chess_board);
+        whitePieces = new GroupOfPieces(chess_board, Color.White);
+        blackPieces = new GroupOfPieces(chess_board, Color.Black);
+        colorTurn = chess_board.startingColor;
         Is_white_up = false;
-        RecordedMoves = new Stack<Move>();
-        ReversedMoves = new Stack<Move>();
+        recordedMoves = new Stack<Move>();
+        reversedMoves = new Stack<Move>();
         setDangerCell(true);
     }
 
@@ -50,16 +38,16 @@ public class Position {
         StringBuilder txt = new StringBuilder("Board Fuck-Ups: ");
         for (int i = 0; i < A_TO_H.length; i++) {
             for (int j = 0; j < ONE_TO_EIGHT.length; j++) {
-                Cell cell1 = new Cell(board.The_Grid[i][j]);
-                Cell cell2 = new Cell(Position.Chess_Board.The_Grid[i][j]);
+                Cell cell1 = new Cell(board.cellsGrid[i][j]);
+                Cell cell2 = new Cell(Position.board.cellsGrid[i][j]);
                 if (!cell1.equals(cell2)){
                     txt.append(A_TO_H[i]);
                     txt.append(ONE_TO_EIGHT[j]);
                     txt.append(": ");
                     txt.append("{Before load: ");
-                    txt.append(cell1.Is_there_Piece ? cell1.Type : Board.Nothing);
+                    txt.append(cell1.isTherePiece ? cell1.type : Board.Nothing);
                     txt.append(", After load: ");
-                    txt.append(cell2.Is_there_Piece ? cell2.Type : Board.Nothing);
+                    txt.append(cell2.isTherePiece ? cell2.type : Board.Nothing);
                     txt.append("}");
                     if (i < A_TO_H.length - 1 || j < ONE_TO_EIGHT.length - 1){
                         txt.append(", ");
@@ -77,16 +65,16 @@ public class Position {
         }
     }
 
-    public static Move[] Get_all_legal_moves()
+    public static Stack<Move> Get_all_legal_moves()
     {
         return Get_all_legal_Group_moves();
     }
 
-    public static boolean king_in_danger(int king_x, int king_y, Move[] moves_options)
+    public static boolean king_in_danger(int kingRow, int kingColumn, Stack<Move> moves_options)
     {
         for (Move moves_option : moves_options) {
             if (moves_option != null) {
-                if (moves_option.Next_row == king_x && moves_option.Next_column == king_y) {
+                if (moves_option.endRow == kingRow && moves_option.endColumn == kingColumn) {
                     return true;
                 }
             }
@@ -95,90 +83,77 @@ public class Position {
     }
 
     private static void setDangerCell(boolean hasMoved){
-        Point kingLocation = Is_white_turn ? White_Pieces.get_king_point() : Black_Pieces.get_king_point();
+        Point kingLocation = colorTurn.equals(Color.White) ? whitePieces.get_king_point() : blackPieces.get_king_point();
         if (kingLocation != null){
-            if (king_in_danger(kingLocation.X, kingLocation.Y, Get_all_Group_moves(!Is_white_turn))){
-                KingAtDanger = hasMoved ? new Point(kingLocation) : null;
+            if (king_in_danger(kingLocation.X, kingLocation.Y, Get_all_Group_moves(!colorTurn.equals(Color.White)))){
+                kingAtDanger = hasMoved ? new Point(kingLocation) : null;
                 return;
             }
         }
-        KingAtDanger = null;
+        kingAtDanger = null;
     }
 
     public static Point getMoveStartCell(){
-        Move move = RecordedMoves.peek();
-        return new Point(move.Current_row, move.Current_column);
+        Move move = recordedMoves.peek();
+        return new Point(move.startRow, move.startColumn);
     }
 
     public static Point getMoveEndCell(){
-        Move move = RecordedMoves.peek();
-        if (!move.Castle){
-            return new Point(move.Next_row, move.Next_column);
+        Move move = recordedMoves.peek();
+        if (!move.castle){
+            return new Point(move.endRow, move.endColumn);
         }
         else{
-            return (!Is_white_turn ? White_Pieces : Black_Pieces).get_king_point();
+            return (colorTurn.equals(Color.Black) ? whitePieces : blackPieces).get_king_point();
         }
     }
 
     public static Point getNextEndMoveCell(){
-        if (ReversedMoves.empty()){
+        if (reversedMoves.empty()){
             return null;
         }
-        Move move = ReversedMoves.peek();
-        if (!move.Castle){
-            return new Point(move.Next_row, move.Next_column);
+        Move move = reversedMoves.peek();
+        if (!move.castle){
+            return new Point(move.endRow, move.endColumn);
         }
         else{
-            return (!Is_white_turn ? White_Pieces : Black_Pieces).get_king_point();
+            return (colorTurn.equals(Color.Black) ? whitePieces : blackPieces).get_king_point();
         }
     }
 
-    public static Move[] Get_all_Group_moves(boolean is_white_turn)
+    public static Stack<Move> Get_all_Group_moves(boolean isWhiteTurn)
     {
-        Group_of_pieces group = is_white_turn ? White_Pieces : Black_Pieces;
-        Group_of_pieces other_group = is_white_turn ? Black_Pieces : White_Pieces;
-        int group_size = group.Group_Pieces.length;
-        int max_number_of_group_moves = 0;
-        for (int i = 0; i < group_size; i++)
-        {
-            if (group.Group_Pieces[i] != null && !group.Group_Pieces[i].IsDeleted)
+        GroupOfPieces group = isWhiteTurn ? whitePieces : blackPieces;
+        GroupOfPieces other_group = isWhiteTurn ? blackPieces : whitePieces;
+        Stack<Move> groupMoves = new Stack<>();
+        for (Piece groupPiece : group.pieces){
+            if (groupPiece != null && !groupPiece.isDeleted)
             {
-                max_number_of_group_moves += group.Group_Pieces[i].Get_Max_Number_Of_Moves_On_Board();
+                groupPiece.fillPieceMoves(groupMoves, isWhiteTurn, Is_white_up, board, other_group, group);
             }
         }
-
-        Move[] Group_moves = new Move[max_number_of_group_moves];
-
-        int current_index = 0;
-        for (int i = 0; i < group_size; i++)
-        {
-            if (group.Group_Pieces[i] != null && !group.Group_Pieces[i].IsDeleted)
-            {
-                current_index += group.Group_Pieces[i].Fill_All_In_Board_Moves(Group_moves, current_index,
-                        is_white_turn, Is_white_up, Chess_Board, other_group, group);
-            }
-        }
-        return Group_moves;
+        return groupMoves;
     }
 
-    private static Move[] Get_all_legal_Group_moves()
+    private static Stack<Move> Get_all_legal_Group_moves()
     {
-        Group_of_pieces group = Is_white_turn ? White_Pieces : Black_Pieces;
-        Move[] legal_moves = Get_all_Group_moves(Is_white_turn);
+        GroupOfPieces group = colorTurn.equals(Color.White) ? whitePieces : blackPieces;
+        Stack<Move> groupMoves = Get_all_Group_moves(colorTurn.equals(Color.White));
+        Stack<Move> groupLegalMoves = new Stack<>();
 
-        Point king_point;
+        Point kingPoint;
 
-        int move_index = 0;
-        for (Move optional_move : legal_moves)
-        {
-            if (optional_move != null &&
-                    group.Piece_location(optional_move.Current_row, optional_move.Current_column) != null &&
-                    !group.Piece_location(optional_move.Current_row, optional_move.Current_column).IsDeleted)
+        while (!groupMoves.empty()){
+            Move groupMove = groupMoves.pop();
+            if (groupMove != null &&
+                    group.Piece_location(groupMove.startRow, groupMove.startColumn) != null &&
+                    !group.Piece_location(groupMove.startRow, groupMove.startColumn).isDeleted)
             {
-                if (optional_move.Type_of_piece.equals("King") && Chess_Board.The_Grid[optional_move.Next_row][optional_move.Next_column].Type.equals("Rook") &&
-                        optional_move.Is_white == Chess_Board.The_Grid[optional_move.Next_row][optional_move.Next_column].Color_piece.equals("white")){
+                boolean moveLegal = true;
+                if (groupMove.type.equals(PieceType.King) && board.cellsGrid[groupMove.endRow][groupMove.endColumn].type.equals(PieceType.Rook) &&
+                        groupMove.color.equals(board.cellsGrid[groupMove.endRow][groupMove.endColumn].color)){
                     int wantedRow;
-                    if (optional_move.Current_row < optional_move.Next_row)
+                    if (groupMove.startRow < groupMove.endRow)
                     {
                         wantedRow = 6;
                     }
@@ -186,183 +161,218 @@ public class Position {
                     {
                         wantedRow = 2;
                     }
-                    int startRowMovement = Math.min(optional_move.Current_row, wantedRow);
-                    int endRowMovement = Math.max(optional_move.Current_row, wantedRow);
-                    Move[] optional_opponent_moves = Get_all_Group_moves(!Is_white_turn);
+                    int startRowMovement = Math.min(groupMove.startRow, wantedRow);
+                    int endRowMovement = Math.max(groupMove.startRow, wantedRow);
+
+                    Stack<Move> optionalOpponentResponse = Get_all_Group_moves(!colorTurn.equals(Color.White));
                     for (int row = startRowMovement; row <= endRowMovement; row++)
                     {
-                        if (king_in_danger(row, optional_move.Current_column, optional_opponent_moves))
+                        if (king_in_danger(row, groupMove.endColumn, optionalOpponentResponse))
                         {
-                            legal_moves[move_index] = null;
+                            moveLegal = false;
                             break;
                         }
                     }
+                    if (!moveLegal){
+                        continue;
+                    }
                 }
-                Play_move(optional_move);
 
-                Move[] Next_options_of_optional_moves = Get_all_Group_moves(Is_white_turn);
+                Play_move(groupMove);
 
-                king_point = group.get_king_point();
+                Stack<Move> optionalOpponentResponse = Get_all_Group_moves(colorTurn.equals(Color.White));
 
-                if (king_point == null || king_in_danger(king_point.X, king_point.Y, Next_options_of_optional_moves))
+                kingPoint = group.get_king_point();
+
+                if (kingPoint == null || king_in_danger(kingPoint.X, kingPoint.Y, optionalOpponentResponse))
                 {
-                    legal_moves[move_index] = null;
+                    moveLegal = false;
                 }
                 Reverse_move();
+
+                if (moveLegal){
+                    groupLegalMoves.push(groupMove);
+                }
             }
-            move_index++;
         }
-        return legal_moves;
+        return groupLegalMoves;
     }
 
     public static void ClearHistory() {
-        ReversedMoves = new Stack<Move>();
-        RecordedMoves = new Stack<Move>();
+        reversedMoves = new Stack<Move>();
+        recordedMoves = new Stack<Move>();
     }
 
     public static void Play_move(Move move) {
-        setDangerCell(false);
-
         // update groups of pieces:
-        Group_of_pieces group = Is_white_turn ? White_Pieces : Black_Pieces;
-        Group_of_pieces other_group = Is_white_turn ? Black_Pieces : White_Pieces;
-        Piece deleted_piece = other_group.Delete_piece(move.Next_row, move.Next_column, move.Current_row, move.Current_column, group);
+        GroupOfPieces group = colorTurn.equals(Color.White) ? whitePieces : blackPieces;
+        GroupOfPieces other_group = colorTurn.equals(Color.White) ? blackPieces : whitePieces;
+        Piece deleted_piece = other_group.Delete_piece(move.endRow, move.endColumn, move.startRow, move.startColumn, group);
         group.Update_move(move);
 
-        move.setDeleted_piece(deleted_piece);
-        RecordedMoves.push(move);
-        if (move.Crowning_pawn){
-            DeclarePawnCrown(move.Crowning_pawn_type);
+        move.setDeletedPiece(deleted_piece);
+        recordedMoves.push(move);
+        if (move.crowningPawn){
+            DeclarePawnCrown(move.crowningPawnType);
         }
-        setDangerCell(true);
 
         // update board:
-        Chess_Board.Update_Board(White_Pieces, Black_Pieces);
-        Is_white_turn = !Is_white_turn;
+        board.updateBoard(whitePieces, blackPieces);
+        colorTurn = colorTurn.equals(Color.White) ? Color.Black : Color.White;
     }
 
     public static Move Reverse_move() {
-        Move move = RecordedMoves.pop();
-        if (move.Deleted_piece != null){
-            move.Deleted_piece.IsDeleted = false;
-        }
-        setDangerCell(false);
+        Move move = recordedMoves.pop();
+        GroupOfPieces group = move.color.equals(Color.White) ? whitePieces : blackPieces;
+        GroupOfPieces other_group = move.color.equals(Color.White) ? blackPieces : whitePieces;
 
-        Group_of_pieces group = move.Is_white ? White_Pieces : Black_Pieces;
-        Group_of_pieces other_group = move.Is_white ? Black_Pieces : White_Pieces;
-        if (move.Castle){
+        if (move.deletedPiece != null){
+            move.deletedPiece.isDeleted = false;
+        }
+        if (move.castle){
             Point king_point = group.get_king_point();
             Piece king = group.Piece_location(king_point.X, king_point.Y);
-            Piece rook = group.Piece_location(king_point.X + (move.Next_row > move.Current_row ? -1 : 1), king_point.Y);
-            king.Row_Number = move.Current_row;
-            king.Column_Number = move.Current_column;
-            king.Number_of_moves--;
+            Piece rook = group.Piece_location(king_point.X + (move.endRow > move.startRow ? -1 : 1), king_point.Y);
+            king.row = move.startRow;
+            king.column = move.startColumn;
+            king.numberOfMoves--;
 
-            rook.Row_Number = move.Next_row;
-            rook.Column_Number = move.Next_column;
-            rook.Number_of_moves--;
+            rook.row = move.endRow;
+            rook.column = move.endColumn;
+            rook.numberOfMoves--;
         }
         else {
-            Piece piece = group.Piece_location(move.Next_row, move.Next_column);
+            Piece piece = group.Piece_location(move.endRow, move.endColumn);
             if (piece != null){
-                piece.Row_Number = move.Current_row;
-                piece.Column_Number = move.Current_column;
-                piece.Number_of_moves--;
-                if (move.Crowning_pawn){
-                    group.Group_Pieces[piece.Piece_num] = new Pawn(piece);
-                    group.Group_Pieces[piece.Piece_num].Type = "Pawn";
+                piece.row = move.startRow;
+                piece.column = move.startColumn;
+                piece.numberOfMoves--;
+                if (move.crowningPawn){
+                    Stack<Piece> temp = new Stack<>();
+                    while (!group.pieces.empty() && group.pieces.peek().pieceNum > piece.pieceNum){
+                        temp.push(group.pieces.pop());
+                    }
+                    if (!group.pieces.empty() && piece.pieceNum == group.pieces.peek().pieceNum){
+                        // set piece as eaten
+                        group.pieces.pop();
+                        piece.isDeleted = false;
+                        group.pieces.push(new Pawn(piece));
+                    }
+                    while (!temp.empty()){
+                        group.pieces.push(temp.pop());
+                    }
                 }
             }
         }
-        Is_white_turn = !Is_white_turn;
+        colorTurn = colorTurn.equals(Color.White) ? Color.Black : Color.White;
 
-        if (!RecordedMoves.empty()){
-            Move previous_move = RecordedMoves.peek();
-            if (previous_move.Type_of_piece.equals("Pawn") && Math.abs(previous_move.Current_column - previous_move.Next_column) > 1){
-                Pawn pawn = (Pawn) other_group.Piece_location(previous_move.Next_row, previous_move.Next_column);
-                pawn.moved_two_cells = true;
+        if (!recordedMoves.empty()){
+            Move previous_move = recordedMoves.peek();
+            if (previous_move.type.equals(PieceType.Pawn) && Math.abs(previous_move.startColumn - previous_move.endColumn) > 1){
+                Pawn pawn = (Pawn) other_group.Piece_location(previous_move.endRow, previous_move.endColumn);
+                if (pawn != null){
+                    pawn.moved_two_cells = true;
+                }
+            }
+        }
+
+        // update board:
+        board.updateBoard(whitePieces, blackPieces);
+        return move;
+    }
+
+    public static void DeclarePawnCrown(PieceType type) {
+        if (recordedMoves.empty()){
+            return;
+        }
+        Move crowningMove = recordedMoves.peek();
+        if (!crowningMove.type.equals(PieceType.Pawn)){
+            return;
+        }
+        setDangerCell(false);
+        GroupOfPieces group = crowningMove.color.equals(Color.White) ? whitePieces : blackPieces;
+
+        Piece pawn = group.Piece_location(crowningMove.endRow, crowningMove.endColumn);
+        int piece_num = (pawn != null ? pawn.pieceNum : group.pieces.size());
+        Stack<Piece> temp = new Stack<>();
+
+        if (!type.equals(PieceType.None)){
+            while (!group.pieces.empty() && group.pieces.peek().pieceNum > piece_num){
+                temp.push(group.pieces.pop());
+            }
+            if (!group.pieces.empty() && piece_num == group.pieces.peek().pieceNum){
+                group.pieces.pop();
+                switch (type) {
+                    case Rook:
+                        group.pieces.push(new Rook(pawn));
+                        break;
+
+                    case Bishop:
+                        group.pieces.push(new Bishop(pawn));
+                        break;
+
+                    case Knight:
+                        group.pieces.push(new Knight(pawn));
+                        break;
+
+                    case Queen:
+                        group.pieces.push(new Queen(pawn));
+                        break;
+
+                    default:
+                        return;
+                }
+                group.pieces.peek().type = type;
             }
         }
         setDangerCell(true);
 
         // update board:
-        Chess_Board.Update_Board(White_Pieces, Black_Pieces);
-        return move;
-    }
+        board.cellsGrid[pawn.row][pawn.column].type = type;
 
-    public static void DeclarePawnCrown(String type) {
-        if (RecordedMoves.empty()){
-            return;
+        while (!temp.empty()){
+            group.pieces.push(temp.pop());
         }
-        Move crowningMove = RecordedMoves.peek();
-        if (!crowningMove.Type_of_piece.equals("Pawn")){
-            return;
-        }
-        setDangerCell(false);
-        Group_of_pieces group;
-        if (crowningMove.Is_white) {
-            group = White_Pieces;
-        }
-        else {
-            group = Black_Pieces;
-        }
-        Piece pawn = group.Piece_location(crowningMove.Next_row, crowningMove.Next_column);
-        int piece_num = (pawn != null ? pawn.Piece_num : -1);
-        switch (type) {
-            case "Rook":
-                group.Group_Pieces[piece_num] = new Rook(pawn);
-                break;
-            case "Bishop":
-                group.Group_Pieces[piece_num] = new Bishop(pawn);
-                break;
-            case "Knight":
-                group.Group_Pieces[piece_num] = new Knight(pawn);
-                break;
-            case "Queen":
-                group.Group_Pieces[piece_num] = new Queen(pawn);
-                break;
-            default:
-                return;
-        }
-        group.Group_Pieces[piece_num].Type = type;
-        setDangerCell(true);
-
-        // update board:
-        Chess_Board.The_Grid[pawn.Row_Number][pawn.Column_Number].Type = type;
     }
 
     public static void Play_move_in_real(Move move){
+        setDangerCell(false);
         Play_move(move);
-        if (!ReversedMoves.empty() && !move.Crowning_pawn && !ReversedMoves.pop().equals(move)) {
-            ReversedMoves = new Stack<Move>();
+        setDangerCell(true);
+        if (!reversedMoves.empty() && !move.crowningPawn && !reversedMoves.pop().equals(move)) {
+            reversedMoves = new Stack<Move>();
         }
     }
 
-    public static void DeclarePawnCrown_in_real(String type) {
+    public static void DeclarePawnCrown_in_real(PieceType type) {
         DeclarePawnCrown(type);
-        RecordedMoves.peek().Crowning_pawn_type = type;
-        if (!ReversedMoves.empty() && !ReversedMoves.pop().Crowning_pawn_type.equals(type)){
-            ReversedMoves = new Stack<Move>();
+        recordedMoves.peek().crowningPawnType = type;
+        if (!reversedMoves.empty() && !reversedMoves.pop().crowningPawnType.equals(type)){
+            reversedMoves = new Stack<Move>();
         }
     }
 
     public static void Reverse_move_in_real(){
-        if (!RecordedMoves.empty()){
-            ReversedMoves.push(Reverse_move());
+        if (!recordedMoves.empty()){
+            setDangerCell(false);
+            reversedMoves.push(Reverse_move());
+            setDangerCell(true);
         }
     }
 
     public static void Replay_reversed_move_in_real(){
-        if (!ReversedMoves.empty()){
-            Play_move(ReversedMoves.pop());
+        if (!reversedMoves.empty()){
+            setDangerCell(false);
+            Play_move(reversedMoves.pop());
+            setDangerCell(true);
         }
     }
 
     public static boolean reverseMoveAvailable() {
-        return !RecordedMoves.empty();
+        return !recordedMoves.empty();
     }
 
     public static boolean replayReversedMoveAvailable() {
-        return !ReversedMoves.empty();
+        return !reversedMoves.empty();
     }
 }

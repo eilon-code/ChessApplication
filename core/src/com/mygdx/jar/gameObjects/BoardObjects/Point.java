@@ -1,7 +1,5 @@
 package com.mygdx.jar.gameObjects.BoardObjects;
 
-import java.util.Objects;
-
 public class Point {
     public int X;
     public int Y;
@@ -19,8 +17,8 @@ public class Point {
     }
 
     public Point(Cell original_cell) {
-        X = original_cell.Row_Number;
-        Y = original_cell.Column_Number;
+        X = original_cell.row;
+        Y = original_cell.column;
     }
 
     @Override

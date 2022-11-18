@@ -1,120 +1,76 @@
 package com.mygdx.jar.gameObjects.GamePieces;
 
 import com.mygdx.jar.gameObjects.BoardObjects.Board;
-import com.mygdx.jar.gameObjects.BoardObjects.Group_of_pieces;
+import com.mygdx.jar.gameObjects.BoardObjects.GroupOfPieces;
 import com.mygdx.jar.gameObjects.BoardObjects.Move;
+import com.mygdx.jar.gameObjects.BoardObjects.Point;
+
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Stack;
 
 public class Bishop extends Piece
 {
-    public Bishop(String color, int x, int y, int piece_num, int number_of_moves)
+    public Bishop(Color color, int row, int column, int pieceNum, int numberOfMoves)
     {
-        super("Bishop", color, x, y, piece_num, false, number_of_moves);
+        super(PieceType.Bishop, color, row, column, pieceNum, false, numberOfMoves);
     }
 
-    public Bishop(Piece original_bishop)
+    public Bishop(Piece originalBishop)
     {
-        super(original_bishop);
+        super(originalBishop);
     }
 
     @Override
-    public int Get_Max_Number_Of_Moves_On_Board()
+    public int getMaxNumberOfMovesOnBoard()
     {
         return 13;
     }
 
     @Override
-    public int Fill_All_In_Board_Moves(Move[] Group_moves, int current_index, boolean is_white_turn,
-                                       boolean Is_white_up, Board chess_board, Group_of_pieces other_group, Group_of_pieces group)
+    public void fillPieceMoves(Stack<Move> groupMoves, boolean is_white_turn,
+                               boolean Is_white_up, Board board, GroupOfPieces otherGroup, GroupOfPieces group)
     {
-        int number_of_valid_moves = 0;
-        // slant right and up
-        for (int slant = 1; slant < 8 - Row_Number; slant++)
-        {
-            if (Column_Number + slant > 7)
-            {
-                break;
+        Queue<Point> directions = new LinkedList<>();
+        directions.add(new Point(0, 0));
+        directions.add(new Point(1, 1));
+        directions.add(new Point(1, -1));
+        directions.add(new Point(-1, 1));
+        directions.add(new Point(-1, -1));
+
+        int radius = 0;
+        while (directions.size() > 1){
+            if (directions.peek().equals(new Point(0, 0))){
+                radius++;
+                directions.add(directions.remove());
+                continue;
             }
-            if (chess_board.The_Grid[Row_Number + slant][Column_Number + slant].Is_there_Piece)
+            Point cellInCheck = new Point(directions.peek());
+            cellInCheck.X *= radius;
+            cellInCheck.Y *= radius;
+            cellInCheck.X += row;
+            cellInCheck.Y += column;
+            if (cellInCheck.X < 0 || cellInCheck.X >= Board.BoardSize ||
+                    cellInCheck.Y < 0 || cellInCheck.Y >= Board.BoardSize){
+                directions.remove();
+                continue;
+            }
+            if (board.cellsGrid[cellInCheck.X][cellInCheck.Y].isTherePiece)
             {
-                if (!chess_board.The_Grid[Row_Number + slant][Column_Number + slant].Color_piece.equals(Color)) {
-                    Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + slant, Column_Number + slant, is_white_turn, "Bishop");
-                    number_of_valid_moves++;
+                if (!board.cellsGrid[cellInCheck.X][cellInCheck.Y].color.equals(color)) {
+                    groupMoves.push(new Move(row, column, cellInCheck.X, cellInCheck.Y, color, type));
                 }
-                break;
+                directions.remove();
+                continue;
             }
             else
             {
-                Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + slant, Column_Number + slant, is_white_turn, "Bishop");
-                number_of_valid_moves++;
+                groupMoves.push(new Move(row, column, cellInCheck.X, cellInCheck.Y, color, type));
             }
+            directions.add(directions.remove());
         }
-
-        // slant right and down
-        for (int slant = 1; slant < 8 - Row_Number; slant++)
-        {
-            if (Column_Number - slant < 0)
-            {
-                break;
-            }
-            if (chess_board.The_Grid[Row_Number + slant][Column_Number - slant].Is_there_Piece)
-            {
-                if (!chess_board.The_Grid[Row_Number + slant][Column_Number - slant].Color_piece.equals(Color)) {
-                    Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + slant, Column_Number - slant, is_white_turn, "Bishop");
-                    number_of_valid_moves++;
-                }
-                break;
-            }
-            else
-            {
-            Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number + slant, Column_Number - slant, is_white_turn, "Bishop");
-            number_of_valid_moves++;
-            }
+        while (!directions.isEmpty()){
+            directions.remove();
         }
-
-        // slant left and up
-        for (int slant = 1; slant < Row_Number + 1; slant++)
-        {
-            if (Column_Number + slant > 7)
-            {
-                break;
-            }
-            if (chess_board.The_Grid[Row_Number - slant][Column_Number + slant].Is_there_Piece)
-            {
-                if (!chess_board.The_Grid[Row_Number - slant][Column_Number + slant].Color_piece.equals(Color)) {
-                    Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - slant, Column_Number + slant, is_white_turn, "Bishop");
-                    number_of_valid_moves++;
-                }
-                break;
-            }
-            else
-            {
-                Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - slant, Column_Number + slant, is_white_turn, "Bishop");
-                number_of_valid_moves++;
-            }
-        }
-
-        // slant left and down
-        for (int slant = 1; slant < Row_Number + 1; slant++)
-        {
-            if (Column_Number - slant < 0)
-            {
-                break;
-            }
-            if (chess_board.The_Grid[Row_Number - slant][Column_Number - slant].Is_there_Piece)
-            {
-                if (!chess_board.The_Grid[Row_Number - slant][Column_Number - slant].Color_piece.equals(Color)) {
-                    Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - slant, Column_Number - slant, is_white_turn, "Bishop");
-                    number_of_valid_moves++;
-                }
-                break;
-            }
-            else
-            {
-                Group_moves[current_index + number_of_valid_moves] = new Move(Row_Number, Column_Number, Row_Number - slant, Column_Number - slant, is_white_turn, "Bishop");
-                number_of_valid_moves++;
-            }
-        }
-
-        return number_of_valid_moves;
     }
 }
