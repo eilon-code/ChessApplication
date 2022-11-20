@@ -111,7 +111,7 @@ public class King extends Piece
                             }
                         }
                         if (castle_with_current_rook_possible){
-                            Move move = new Move(row, column, groupPiece.row, column, color, PieceType.King);
+                            Move move = new Move(row, column, groupPiece.row, groupPiece.column, color, PieceType.King);
                             move.setCastle();
                             groupMoves.push(move);
                         }

@@ -150,8 +150,7 @@ public class Position {
                     !group.Piece_location(groupMove.startRow, groupMove.startColumn).isDeleted)
             {
                 boolean moveLegal = true;
-                if (groupMove.type.equals(PieceType.King) && board.cellsGrid[groupMove.endRow][groupMove.endColumn].type.equals(PieceType.Rook) &&
-                        groupMove.color.equals(board.cellsGrid[groupMove.endRow][groupMove.endColumn].color)){
+                if (groupMove.castle){
                     int wantedRow;
                     if (groupMove.startRow < groupMove.endRow)
                     {
@@ -173,23 +172,19 @@ public class Position {
                             break;
                         }
                     }
-                    if (!moveLegal){
-                        continue;
+                    optionalOpponentResponse.clear();
+                }
+                else{
+                    Play_move(groupMove);
+                    Stack<Move> optionalOpponentResponse = Get_all_Group_moves(colorTurn.equals(Color.White));
+                    kingPoint = group.get_king_point();
+                    if (kingPoint == null || king_in_danger(kingPoint.X, kingPoint.Y, optionalOpponentResponse))
+                    {
+                        moveLegal = false;
                     }
+                    Reverse_move();
+                    optionalOpponentResponse.clear();
                 }
-
-                Play_move(groupMove);
-
-                Stack<Move> optionalOpponentResponse = Get_all_Group_moves(colorTurn.equals(Color.White));
-
-                kingPoint = group.get_king_point();
-
-                if (kingPoint == null || king_in_danger(kingPoint.X, kingPoint.Y, optionalOpponentResponse))
-                {
-                    moveLegal = false;
-                }
-                Reverse_move();
-
                 if (moveLegal){
                     groupLegalMoves.push(groupMove);
                 }

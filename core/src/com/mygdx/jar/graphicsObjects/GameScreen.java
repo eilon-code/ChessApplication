@@ -477,21 +477,27 @@ class GameScreen implements Screen {
                         EditBoard = new Board(null, null, Color.White);
                         if (BoardNum != -1 && BoardNum < previousBoards.size()){
                             Stack<Board> tempBoards = new Stack<Board>();
+                            Stack<DetectionThread> tempDetectionThreads = new Stack<DetectionThread>();
                             int boardNum = 0;
                             while (!previousBoards.empty() && BoardNum != boardNum) {
                                 tempBoards.push(previousBoards.pop());
+                                tempDetectionThreads.push(detectionThreads.pop());
                                 boardNum++;
                             }
                             if (!previousBoards.empty()){
                                 EditBoard = new Board(previousBoards.peek());
+                                if (EditBoard.title.equals(Board.TitleCheck)){
+                                    EditBoard.title = detectionThreads.peek().getPreviousTitle();
+                                }
                             }
                             while (!tempBoards.empty()) {
                                 previousBoards.push(tempBoards.pop());
+                                detectionThreads.push(tempDetectionThreads.pop());
                             }
                         }
                     }
                 }
-                if (!HasScrolled && BoardNum != -1 && BoardNum < previousBoards.size() && currentTime > 0.1) {
+                else if (!HasScrolled && BoardNum != -1 && BoardNum < previousBoards.size() && currentTime > 0.1) {
                     Stack<Board> tempBoards = new Stack<Board>();
                     Stack<Board> tempBoardsView = new Stack<Board>();
                     Stack<DetectionThread> tempThreads = new Stack<DetectionThread>();
@@ -647,7 +653,6 @@ class GameScreen implements Screen {
                         previousBoards.push(board);
                         BoardNum = 0;
                         if (cameraLauncher != null){
-                            System.out.println("Size = " + previousBoards.size() + " BoardNum = " + BoardNum);
                             cameraLauncher.addBoard(board, previousBoards.size() - BoardNum - 1);
                         }
                         previousBoardsForView.push(new Board(board));
@@ -1083,7 +1088,6 @@ class GameScreen implements Screen {
                         ChoosingTitle = !ChoosingTitle;
                     }
                     else if (titleIndex > 0){
-                        System.out.println("Size = " + previousBoards.size());
                         thread = new DetectionThread(title, previousBoardsForView.peek());
                         detectionThreads.pop();
                         detectionThreads.push(thread);

@@ -4,7 +4,7 @@ import static com.mygdx.jar.gameObjects.BoardObjects.PositionCheck.TitlesList;
 
 public class DetectionThread extends Thread{
     private final String mTitle;
-    private boolean hasCheckedTitle;
+    private final String mPreviousTitle;
     public DetectionThread(final String title, final Board board) {
         super(new Runnable() {
             @Override
@@ -40,11 +40,16 @@ public class DetectionThread extends Thread{
                 }
             }
         });
-        this.start();
         mTitle = title;
+        mPreviousTitle = board.title;
+        this.start();
     }
 
     public String getTitle(){
         return mTitle;
+    }
+
+    public String getPreviousTitle(){
+        return mPreviousTitle;
     }
 }

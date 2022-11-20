@@ -191,8 +191,8 @@ public class ChessGame {
         {
             Previous_cell = Current_cell;
         }
-        System.out.println("At Point: (" + Current_cell.row + ", " + Current_cell.column + ")");
-        System.out.println("There Is" + (Current_cell.isTherePiece ? Current_cell.type : PieceType.None));
+//        System.out.println("At Point: (" + Current_cell.row + ", " + Current_cell.column + ")");
+//        System.out.println("There Is" + (Current_cell.isTherePiece ? Current_cell.type : PieceType.None));
     }
 
     public static int CountClicksOnSameCell_AfterCell(Point cell)

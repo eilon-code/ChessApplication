@@ -14,25 +14,47 @@ import java.util.Stack;
 public class PositionCheck {
     public static final String[] TitlesList = new String[] {"מט בשני מסעים", "מט בשלושה מסעים", "מט בארבעה מסעים", "מט לדעת בשני מסעים", "מט עזר בשני מסעים", "כפיית פט בשני מסעים"};
 
-    public final Board board;
-    public final GroupOfPieces whitePieces;
-    public final GroupOfPieces blackPieces;
-    public static Color colorTurn;
-    public boolean Is_white_up;
-    public Point kingAtDanger;
+    private final Board board;
+    private final GroupOfPieces whitePieces;
+    private final GroupOfPieces blackPieces;
     private final Stack<Move> recordedMoves;
+    private Color colorTurn;
+    private Point kingAtDanger;
 
     public PositionCheck(Board chess_board) {
         board = chess_board; // here the magic happens
-        whitePieces = new GroupOfPieces(chess_board, Color.White);
-        blackPieces = new GroupOfPieces(chess_board, Color.Black);
-        colorTurn = chess_board.startingColor;
-        Is_white_up = false;
+        whitePieces = new GroupOfPieces(board, Color.White);
+        blackPieces = new GroupOfPieces(board, Color.Black);
+        colorTurn = board.startingColor;
         recordedMoves = new Stack<>();
         setDangerCell(true);
     }
 
-    public boolean king_in_danger(int kingRow, int kingColumn, Stack<Move> moves_options)
+    public boolean IsTitleFit(String title){
+        int i = 0;
+        while (i < TitlesList.length && !title.equals(TitlesList[i])){
+            i++;
+        }
+        switch (i){
+            case 0:
+                return detect_CheckmateIn_2_Moves();
+            case 1:
+                return detect_CheckmateIn_3_Moves();
+            case 2:
+                return detect_CheckmateIn_4_Moves();
+            case 3:
+                return detect_SuicideCheckmateIn_2_Moves();
+            case 4:
+                return detect_CheckmateHelperIn_2_Moves();
+            case 5:
+                return detect_PatIn_2_Moves();
+            default:
+                System.out.println("Not Official Title");
+                return false;
+        }
+    }
+
+    private boolean king_in_danger(int kingRow, int kingColumn, Stack<Move> moves_options)
     {
         for (Move moves_option : moves_options) {
             if (moves_option != null) {
@@ -55,15 +77,17 @@ public class PositionCheck {
         kingAtDanger = null;
     }
 
-    public Stack<Move> Get_all_Group_moves(boolean isWhiteTurn)
+    private Stack<Move> Get_all_Group_moves(boolean isWhiteTurn)
     {
         GroupOfPieces group = isWhiteTurn ? whitePieces : blackPieces;
         GroupOfPieces other_group = isWhiteTurn ? blackPieces : whitePieces;
         Stack<Move> groupMoves = new Stack<>();
+        boolean is_white_up = false;
+
         for (Piece groupPiece : group.pieces){
             if (groupPiece != null && !groupPiece.isDeleted)
             {
-                groupPiece.fillPieceMoves(groupMoves, isWhiteTurn, Is_white_up, board, other_group, group);
+                groupPiece.fillPieceMoves(groupMoves, isWhiteTurn, is_white_up, board, other_group, group);
             }
         }
         return groupMoves;
@@ -84,8 +108,7 @@ public class PositionCheck {
                     !group.Piece_location(groupMove.startRow, groupMove.startColumn).isDeleted)
             {
                 boolean moveLegal = true;
-                if (groupMove.type.equals(PieceType.King) && board.cellsGrid[groupMove.endRow][groupMove.endColumn].type.equals(PieceType.Rook) &&
-                        groupMove.color.equals(board.cellsGrid[groupMove.endRow][groupMove.endColumn].color)){
+                if (groupMove.castle){
                     int wantedRow;
                     if (groupMove.startRow < groupMove.endRow)
                     {
@@ -107,23 +130,19 @@ public class PositionCheck {
                             break;
                         }
                     }
-                    if (!moveLegal){
-                        continue;
+                    optionalOpponentResponse.clear();
+                }
+                else{
+                    Play_move(groupMove);
+                    Stack<Move> optionalOpponentResponse = Get_all_Group_moves(colorTurn.equals(Color.White));
+                    kingPoint = group.get_king_point();
+                    if (kingPoint == null || king_in_danger(kingPoint.X, kingPoint.Y, optionalOpponentResponse))
+                    {
+                        moveLegal = false;
                     }
+                    Reverse_move();
+                    optionalOpponentResponse.clear();
                 }
-
-                Play_move(groupMove);
-
-                Stack<Move> optionalOpponentResponse = Get_all_Group_moves(colorTurn.equals(Color.White));
-
-                kingPoint = group.get_king_point();
-
-                if (kingPoint == null || king_in_danger(kingPoint.X, kingPoint.Y, optionalOpponentResponse))
-                {
-                    moveLegal = false;
-                }
-                Reverse_move();
-
                 if (moveLegal){
                     groupLegalMoves.push(groupMove);
                 }
@@ -132,7 +151,7 @@ public class PositionCheck {
         return groupLegalMoves;
     }
 
-    public void Play_move(Move move) {
+    private void Play_move(Move move) {
         // update groups of pieces:
         GroupOfPieces group = colorTurn.equals(Color.White) ? whitePieces : blackPieces;
         GroupOfPieces other_group = colorTurn.equals(Color.White) ? blackPieces : whitePieces;
@@ -150,13 +169,14 @@ public class PositionCheck {
         colorTurn = colorTurn.equals(Color.White) ? Color.Black : Color.White;
     }
 
-    public void Reverse_move() {
+    private void Reverse_move() {
         Move move = recordedMoves.pop();
+        GroupOfPieces group = move.color.equals(Color.White) ? whitePieces : blackPieces;
+        GroupOfPieces other_group = move.color.equals(Color.White) ? blackPieces : whitePieces;
+
         if (move.deletedPiece != null){
             move.deletedPiece.isDeleted = false;
         }
-        GroupOfPieces group = move.color.equals(Color.White) ? whitePieces : blackPieces;
-        GroupOfPieces other_group = move.color.equals(Color.White) ? blackPieces : whitePieces;
         if (move.castle){
             Point king_point = group.get_king_point();
             Piece king = group.Piece_location(king_point.X, king_point.Y);
@@ -183,6 +203,7 @@ public class PositionCheck {
                     if (!group.pieces.empty() && piece.pieceNum == group.pieces.peek().pieceNum){
                         // set piece as eaten
                         group.pieces.pop();
+                        piece.isDeleted = false;
                         group.pieces.push(new Pawn(piece));
                     }
                     while (!temp.empty()){
@@ -197,7 +218,9 @@ public class PositionCheck {
             Move previous_move = recordedMoves.peek();
             if (previous_move.type.equals(PieceType.Pawn) && Math.abs(previous_move.startColumn - previous_move.endColumn) > 1){
                 Pawn pawn = (Pawn) other_group.Piece_location(previous_move.endRow, previous_move.endColumn);
-                pawn.moved_two_cells = true;
+                if (pawn != null){
+                    pawn.moved_two_cells = true;
+                }
             }
         }
 
@@ -205,7 +228,7 @@ public class PositionCheck {
         board.updateBoard(whitePieces, blackPieces);
     }
 
-    public void DeclarePawnCrown(PieceType type) {
+    private void DeclarePawnCrown(PieceType type) {
         if (recordedMoves.empty()){
             return;
         }
@@ -263,61 +286,37 @@ public class PositionCheck {
         }
     }
 
-    public boolean IsTitleFit(String title){
-        int i = 0;
-        while (i < TitlesList.length && !title.equals(TitlesList[i])){
-            i++;
-        }
-        switch (i){
-            case 0:
-                return detect_CheckmateIn_2_Moves();
-            case 1:
-                return detect_CheckmateIn_3_Moves();
-            case 2:
-                return detect_CheckmateIn_4_Moves();
-            case 3:
-                return detect_SuicideCheckmateIn_2_Moves();
-            case 4:
-                return detect_CheckmateHelperIn_2_Moves();
-            case 5:
-                return detect_PatIn_2_Moves();
-            default:
-                System.out.println("Not Official Title");
-                return false;
-        }
-    }
-
-    public boolean detect_CheckmateIn_2_Moves(){
-        Move[] moves = new Move[8];
+    private boolean detect_CheckmateIn_2_Moves(){
+        Stack<Move> moves = new Stack<Move>();
         return detect_CheckmateIn_X_Moves(2, Position.colorTurn, moves);
     }
 
-    public boolean detect_CheckmateIn_3_Moves(){
-        Move[] moves = new Move[8];
+    private boolean detect_CheckmateIn_3_Moves(){
+        Stack<Move> moves = new Stack<Move>();
         return detect_CheckmateIn_X_Moves(3, Position.colorTurn, moves);
     }
 
-    public boolean detect_CheckmateIn_4_Moves(){
-        Move[] moves = new Move[8];
+    private boolean detect_CheckmateIn_4_Moves(){
+        Stack<Move> moves = new Stack<Move>();
         return detect_CheckmateIn_X_Moves(4, Position.colorTurn, moves);
     }
 
-    public boolean detect_SuicideCheckmateIn_2_Moves(){
-        Move[] moves = new Move[8];
+    private boolean detect_SuicideCheckmateIn_2_Moves(){
+        Stack<Move> moves = new Stack<Move>();
         return detect_SuicideCheckmateIn_X_Moves(2, Position.colorTurn, moves);
     }
 
-    public boolean detect_CheckmateHelperIn_2_Moves(){
-        Move[] moves = new Move[8];
+    private boolean detect_CheckmateHelperIn_2_Moves(){
+        Stack<Move> moves = new Stack<Move>();
         return detect_CheckmateHelp_In_X_Moves(2, Position.colorTurn, moves);
     }
 
-    public boolean detect_PatIn_2_Moves(){
-        Move[] moves = new Move[8];
+    private boolean detect_PatIn_2_Moves(){
+        Stack<Move> moves = new Stack<Move>();
         return detect_PatIn_X_Moves(2, Position.colorTurn, moves);
     }
 
-    private boolean detect_CheckmateIn_X_Moves(int x, Color color, Move[] moves){
+    private boolean detect_CheckmateIn_X_Moves(int x, Color color, Stack<Move> moves){
         Stack<Move> currentLegalMoves = Get_all_legal_Group_moves();
         GroupOfPieces group = colorTurn.equals(Color.White) ? whitePieces : blackPieces;
         if (x == 0){
@@ -330,11 +329,12 @@ public class PositionCheck {
         }
 
         boolean hasBeenTrue = false;
-        for (Move move : currentLegalMoves){
+        while (!currentLegalMoves.empty()){
+            Move move = currentLegalMoves.pop();
             if (move == null){
                 continue;
             }
-            moves[8 - 2*x - ((!colorTurn.equals(color)) ? 1 : 0)] = move;
+            moves.push(move);
 
             setDangerCell(false);
             Play_move(move);
@@ -345,6 +345,7 @@ public class PositionCheck {
             setDangerCell(true);
 
             if ((!colorTurn.equals(color)) && !isPass){
+                moves.pop();
                 return false;
             }
             if (isPass){
@@ -362,17 +363,17 @@ public class PositionCheck {
                     System.out.println("//////");
                 }
             }
+            moves.pop();
         }
         return hasBeenTrue;
     }
 
-    private boolean detect_PatIn_X_Moves(int x, Color color, Move[] moves){
+    private boolean detect_PatIn_X_Moves(int x, Color color, Stack<Move> moves){
         if (x < 0){
             return false;
         }
         Stack<Move> currentLegalMoves = Get_all_legal_Group_moves();
         GroupOfPieces group = colorTurn.equals(Color.White) ? whitePieces : blackPieces;
-        System.out.println("Is color white?" + colorTurn.equals(color));
 
         if (x == 0){
             Point king = group.get_king_point();
@@ -391,11 +392,12 @@ public class PositionCheck {
         }
 
         boolean hasBeenTrue = false;
-        for (Move move : currentLegalMoves){
+        while (!currentLegalMoves.empty()){
+            Move move = currentLegalMoves.pop();
             if (move == null){
                 continue;
             }
-            moves[8 - 2*x - ((colorTurn.equals(color)) ? 1 : 0)] = move;
+            moves.push(move);
 
             setDangerCell(false);
             Play_move(move);
@@ -406,6 +408,7 @@ public class PositionCheck {
             setDangerCell(true);
 
             if ((!colorTurn.equals(color)) && !isPass){
+                moves.pop();
                 return false;
             }
             if (isPass){
@@ -421,14 +424,16 @@ public class PositionCheck {
                         }
                     }
                     System.out.println("//////");
+                    moves.pop();
                     return true;
                 }
             }
+            moves.pop();
         }
         return hasBeenTrue;
     }
 
-    private boolean detect_SuicideCheckmateIn_X_Moves(int x, Color color, Move[] moves){
+    private boolean detect_SuicideCheckmateIn_X_Moves(int x, Color color, Stack<Move> moves){
         Stack<Move> currentLegalMoves = Get_all_legal_Group_moves();
         GroupOfPieces group = colorTurn.equals(Color.White) ? whitePieces : blackPieces;
 
@@ -442,11 +447,12 @@ public class PositionCheck {
         }
 
         boolean hasBeenTrue = false;
-        for (Move move : currentLegalMoves){
+        while (!currentLegalMoves.empty()){
+            Move move = currentLegalMoves.pop();
             if (move == null){
                 continue;
             }
-            moves[8 - 2*x - ((!colorTurn.equals(color)) ? 1 : 0)] = move;
+            moves.push(move);
 
             setDangerCell(false);
             Play_move(move);
@@ -457,6 +463,7 @@ public class PositionCheck {
             setDangerCell(true);
 
             if ((!colorTurn.equals(color)) && !isPass){
+                moves.pop();
                 return false;
             }
             if (isPass){
@@ -472,14 +479,14 @@ public class PositionCheck {
                         }
                     }
                     System.out.println("//////");
-                    return true;
                 }
             }
+            moves.pop();
         }
         return hasBeenTrue;
     }
 
-    private boolean detect_CheckmateHelp_In_X_Moves(int x, Color color, Move[] moves){
+    private boolean detect_CheckmateHelp_In_X_Moves(int x, Color color, Stack<Move> moves){
         Stack<Move> currentLegalMoves = Get_all_legal_Group_moves();
         GroupOfPieces group = colorTurn.equals(Color.White) ? whitePieces : blackPieces;
 
@@ -492,11 +499,12 @@ public class PositionCheck {
             return false;
         }
 
-        for (Move move : currentLegalMoves){
+        while (!currentLegalMoves.empty()){
+            Move move = currentLegalMoves.pop();
             if (move == null){
                 continue;
             }
-            moves[8 - 2*x - ((!colorTurn.equals(color)) ? 1 : 0)] = move;
+            moves.push(move);
 
             setDangerCell(false);
             Play_move(move);
@@ -517,8 +525,10 @@ public class PositionCheck {
                     }
                 }
                 System.out.println("//////");
+                moves.pop();
                 return true;
             }
+            moves.pop();
         }
         return false;
     }
