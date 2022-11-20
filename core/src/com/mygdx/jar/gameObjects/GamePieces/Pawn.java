@@ -103,7 +103,7 @@ public class Pawn extends Piece
             {
                 if (row > 0)
                 {
-                    if (board.cellsGrid[row - 1][row].isTherePiece && !(board.cellsGrid[row - 1][column].color.equals(color)))
+                    if (board.cellsGrid[row - 1][column].isTherePiece && !(board.cellsGrid[row - 1][column].color.equals(color)))
                     {
                         if (otherGroup.Piece_location(row - 1, column) != null
                         && !otherGroup.Piece_location(row - 1, column).isDeleted
