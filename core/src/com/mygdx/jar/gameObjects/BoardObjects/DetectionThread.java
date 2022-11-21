@@ -3,8 +3,7 @@ package com.mygdx.jar.gameObjects.BoardObjects;
 import static com.mygdx.jar.gameObjects.BoardObjects.PositionCheck.TitlesList;
 
 public class DetectionThread extends Thread{
-    private final String mTitle;
-    private final String mPreviousTitle;
+    private final String titleInCheck;
     public DetectionThread(final String title, final Board board) {
         super(new Runnable() {
             @Override
@@ -40,16 +39,11 @@ public class DetectionThread extends Thread{
                 }
             }
         });
-        mTitle = title;
-        mPreviousTitle = board.title;
+        this.titleInCheck = title;
         this.start();
     }
 
     public String getTitle(){
-        return mTitle;
-    }
-
-    public String getPreviousTitle(){
-        return mPreviousTitle;
+        return titleInCheck;
     }
 }

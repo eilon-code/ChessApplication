@@ -145,10 +145,12 @@ class GameScreen implements Screen {
         previousBoardsForView = new Stack<Board>();
         detectionThreads = new Stack<DetectionThread>();
 
-//        if (cameraLauncher != null){
-//            cameraLauncher.deleteAll();
-//            cameraLauncher.resetSQL();
-//        }
+        // Reset of SQL lines:
+        // if (cameraLauncher != null){
+        //     cameraLauncher.deleteAll();
+        //     cameraLauncher.resetSQL();
+        // }
+
         if (cameraLauncher != null){
             Stack<Board> boards = cameraLauncher.getStackFromStorage();
             if (!boards.empty()){
@@ -331,6 +333,7 @@ class GameScreen implements Screen {
                     StartNewGame(true);
                     State = "Edit";
                     EditBoard = new Board(Position.board);
+                    EditBoard.title = Board.NonTitle;
                     ChoosingTitle = false;
                     if (IsCameraEnabled && (cameraLauncher != null)){
                         cameraLauncher.closeCamera();
@@ -486,9 +489,7 @@ class GameScreen implements Screen {
                             }
                             if (!previousBoards.empty()){
                                 EditBoard = new Board(previousBoards.peek());
-                                if (EditBoard.title.equals(Board.TitleCheck)){
-                                    EditBoard.title = detectionThreads.peek().getPreviousTitle();
-                                }
+                                EditBoard.title = Board.NonTitle;
                             }
                             while (!tempBoards.empty()) {
                                 previousBoards.push(tempBoards.pop());
@@ -690,7 +691,7 @@ class GameScreen implements Screen {
                             previousBoardsForView.push(tempBoardsForView.pop());
                             detectionThreads.push(tempDetectionThreads.pop());
                         }
-                        System.out.println("JUMP = " + jump + "Boardnum = " + BoardNum);
+                        System.out.println("JUMP = " + jump + "BoardNum = " + BoardNum);
                         if (jump){
                             State = "Game";
                             return;
@@ -841,6 +842,7 @@ class GameScreen implements Screen {
                     }
                     if (!previousBoards.empty()){
                         EditBoard = new Board(previousBoards.peek());
+                        EditBoard.title = Board.NonTitle;
                     }
                     while (!tempBoards.empty()){
                         previousBoards.push(tempBoards.pop());
@@ -1309,12 +1311,8 @@ class GameScreen implements Screen {
     }
 
     private void renderScrollingBackground(float deltaTime) {
-        backgroundOffsets[0] += deltaTime * backgroundMaxScrollingSpeed / 1;
-        backgroundOffsets[1] += deltaTime * backgroundMaxScrollingSpeed / 2;
-        backgroundOffsets[2] += deltaTime * backgroundMaxScrollingSpeed / 4;
-        backgroundOffsets[3] += deltaTime * backgroundMaxScrollingSpeed / 8;
-
         for (int layer = 0; layer < backgroundOffsets.length; layer++) {
+            backgroundOffsets[layer] += deltaTime * backgroundMaxScrollingSpeed / (int)Math.pow(2, layer);
             backgroundOffsets[layer] %= WORLD_HEIGHT;
             batch.draw(ScrollingBackgrounds[layer], 0, 0 - backgroundOffsets[layer], WORLD_WIDTH, WORLD_HEIGHT);
             batch.draw(ScrollingBackgrounds[layer], 0, 0 - backgroundOffsets[layer] + WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
