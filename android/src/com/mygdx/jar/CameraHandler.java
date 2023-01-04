@@ -47,7 +47,6 @@ import java.util.List;
 public class CameraHandler {
     private final Activity mActivity;
     private final TextureView mTextureView;
-    private final Surface mSurface;
     private String mImageFileName;
     private File mImageFolder;
     private int mTotalRotation;
@@ -143,10 +142,9 @@ public class CameraHandler {
         ORIENTATIONS.append(Surface.ROTATION_270, 270);
     }
 
-    public CameraHandler(Activity activity, TextureView textureView, Surface surface){
+    public CameraHandler(Activity activity, TextureView textureView){
         mActivity = activity;
         mTextureView = textureView;
-        mSurface = surface;
         mCameraDeviceStateCallback = new CameraDevice.StateCallback() {
             @Override
             public void onOpened(CameraDevice camera) {
@@ -252,11 +250,7 @@ public class CameraHandler {
         if (mTextureView != null && mTextureView.getSurfaceTexture() != null){
             SurfaceTexture surfaceTexture = mTextureView.getSurfaceTexture();
             surfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
-//            Surface previewSurface = new Surface(surfaceTexture);
             cameraTargets.add(new Surface(surfaceTexture));
-        }
-        if (mSurface != null){
-            cameraTargets.add(mSurface);
         }
 
         try {

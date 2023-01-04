@@ -1,6 +1,7 @@
 package com.mygdx.jar;
 
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.mygdx.jar.gameObjects.BoardObjects.Board;
 
 import java.io.File;
@@ -38,4 +39,6 @@ public interface CameraLauncher {
     void deleteBoard(int boardNum);
 
     void deleteAll();
+
+    void addCameraActor(Stage stage);
 }

@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.view.Surface;
 import android.view.TextureView;
+import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -23,6 +24,7 @@ import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.mygdx.jar.gameObjects.BoardObjects.Board;
 import com.mygdx.jar.graphicsObjects.ScrollingGame;
 import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
@@ -42,6 +44,7 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	private final int PERMISSION_REQUEST_CODE = 101;
 	private PermissionManager permissionManager;
 
+	private TextureViewActor cameraTextureView;
 	private static Bitmap capturedImage;
 	private Texture cameraFootage;
 	private CameraHandler cameraHandler;
@@ -55,19 +58,16 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 
 		///////////////////////////////////////////////////////////////////
 		// Problem starts here:
+		TextureView textureView = new TextureView(getContext());
+		ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(100, 100);
 
-//		setContentView(R.layout.activity_main);
-//		TextureView textureView = findViewById(R.id.textureView);
-		TextureView textureView = new TextureView(this);
-//		textureView.setSurfaceTextureListener((TextureView.SurfaceTextureListener) this);
+		textureView.setLayoutParams(params);
+		cameraTextureView = new TextureViewActor(textureView, getImagesDir());
 
-		Surface surface = null;//new SurfaceView(getContext()).getHolder().getSurface();
-		cameraHandler = new CameraHandler(this, textureView, surface);
-//		setContentView(textureView);
-
+		cameraHandler = new CameraHandler(this, cameraTextureView.getTextureView());
 		///////////////////////////////////////////////////////////////////
+
 		askAllPermissions();
-//		openCamera();
 		SQLite = new SQLiteDataBaseHandler(this);
 	}
 
@@ -88,16 +88,8 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 
 	@Override
 	public Texture getCapturedImage() {
-//		// captureImage();
-//		SurfaceView surfaceView = cameraHandler.getSurfaceView();
-//		if (surfaceView.getHolder() == null || surfaceView.getHolder().getSurface() == null){
-//			return null;
-//		}
-//		TextureData data = (TextureData) surfaceView.getHolder().getSurface();
-//		Texture texture = new Texture(data);
-////		texture = new Texture((TextureData) surfaceView.getHolder().getSurface());
-//		return texture;
-		return cameraFootage;
+//		return cameraFootage;
+		return cameraTextureView.getTexture();
 	}
 
 	private void syncFootage() {
@@ -126,28 +118,12 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 
 	@Override
 	public void captureImage() {
-//		if (isPermissionEnabled){
-//			// openCamera();
-//			captureImageUsingCamera();
-//			syncFootage();
-//		}
-//		else {
-//			System.out.println("No Permission");
-//		}
-		capturedImage = cameraHandler.getBitmap();
-		syncFootage();
+//		capturedImage = cameraHandler.getBitmap();
+//		syncFootage();
 	}
 
 	@Override
 	public void openCamera() {
-//		if (mThread == null) {
-//			mThread = new CameraHandlerThread(this);
-//		}
-//		mThread.openCamera();
-
-//		Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-//		startActivityForResult(intent, 100);
-
 		cameraHandler.setupCamera(cameraHandler.getTextureViewWidth(), cameraHandler.getTextureViewHeight());
 	}
 
@@ -202,11 +178,6 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 
 	@Override
 	public void closeCamera() {
-//		if (mThread != null){
-//			mThread.stopRun();
-//		}
-//		mThread = null;
-//		System.out.println("Camera Closed");
 		cameraHandler.closeCamera();
 	}
 
@@ -237,6 +208,11 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	@Override
 	public void deleteAll() {
 		SQLite.deleteAllData();
+	}
+
+	@Override
+	public void addCameraActor(Stage stage) {
+		stage.addActor(cameraTextureView);
 	}
 
 	@Override

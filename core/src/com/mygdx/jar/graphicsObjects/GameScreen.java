@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.viewport.StretchViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.badlogic.gdx.Screen;
@@ -24,6 +25,8 @@ import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
 
 import java.util.Stack;
 
+import sun.java2d.Surface;
+
 class GameScreen implements Screen {
     private static final String ABC = "אבגדהוזחטיכלמנסעפצקרשתםןךףץ";
     private String[] CurrentTitlesList;
@@ -34,6 +37,8 @@ class GameScreen implements Screen {
 
     // graphics
     private final SpriteBatch batch;
+    private final Stage stage;
+
     private final Texture[] ScrollingBackgrounds;
     private final Texture[] BackgroundsChessBoardCells;
     private final Texture[] SpinningOptionImages;
@@ -257,6 +262,9 @@ class GameScreen implements Screen {
         backgroundMaxScrollingSpeed = (float) WORLD_HEIGHT / 4;
 
         batch = new SpriteBatch();
+        stage = new Stage();
+
+        cameraLauncher.addCameraActor(stage);
 
         // Touch things
         TouchingNow = false;
@@ -301,6 +309,14 @@ class GameScreen implements Screen {
         previousState = (State.equals("Edit") ? previousState : State);
 
         batch.end();
+
+        if (IsCameraEnabled){
+            stage.draw();
+            System.out.println("Should draw camera !");
+        }
+//        else{
+//            stage.clear();
+//        }
     }
 
     private void renderCameraState(float deltaTime) {
@@ -369,7 +385,6 @@ class GameScreen implements Screen {
             if (isGalleryEnabled) {
                 cameraLauncher.openGallery();
             }
-            CameraStream = cameraLauncher.getCapturedImage();
             CameraStream = cameraLauncher.getCapturedImage();
         }
     }
