@@ -6,6 +6,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.TextureView;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.TextureData;
 import com.badlogic.gdx.graphics.g2d.Batch;
@@ -26,24 +28,36 @@ public class TextureViewActor extends Actor {
         final Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                Bitmap bitmap = textureView.getBitmap();
-                if (bitmap != null) {
-                    try {
-                        FileOutputStream fos = null;
-                        fos = new FileOutputStream(filePath);
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-                        fos.close();
-                        System.out.println("Success");
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    texture = new Texture(filePath);
-                } else {
+                final Bitmap bitmap = textureView.getBitmap();
+                if (bitmap != null && bitmap.getByteCount() > 0) {
+                    Gdx.app.postRunnable(new Runnable() {
+                        @Override
+                        public void run() {
+                            int width = bitmap.getWidth();
+                            int height = bitmap.getHeight();
+                            Pixmap pixmap = new Pixmap(width, height, Pixmap.Format.RGBA8888);
+
+                            int[] pixels = new int[width * height];
+                            bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
+                            pixmap.getPixels().asIntBuffer().put(pixels);
+
+                            texture = new Texture(pixmap);
+                        }
+                    });
+                }
+                else {
+                    System.out.println("Bitmap is null");
                     handler.postDelayed(this, 100);
                 }
             }
         };
         handler.post(runnable);
+    }
+
+    @Override
+    public void act(float delta) {
+        super.act(delta);
+        System.out.println("act method called");
     }
 
     @Override
@@ -58,6 +72,9 @@ public class TextureViewActor extends Actor {
             System.out.println("It should print your beloved Camera Output!");
         }
     }
+
+
+
 
 
     public TextureView getTextureView(){

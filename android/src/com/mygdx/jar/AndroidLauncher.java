@@ -1,6 +1,8 @@
 package com.mygdx.jar;
 
 import android.Manifest;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -11,19 +13,22 @@ import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.os.Bundle;
 import android.os.Environment;
-import android.view.Surface;
 import android.view.TextureView;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.mygdx.jar.gameObjects.BoardObjects.Board;
 import com.mygdx.jar.graphicsObjects.ScrollingGame;
@@ -31,6 +36,8 @@ import com.mygdx.jar.imageHandlersObjects.ScreenshotFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Stack;
@@ -45,30 +52,43 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	private PermissionManager permissionManager;
 
 	private TextureViewActor cameraTextureView;
+
+	private Texture cameraTexture;
+
 	private static Bitmap capturedImage;
 	private Texture cameraFootage;
 	private CameraHandler cameraHandler;
+	private ScrollingGame game;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		AndroidApplicationConfiguration config = new AndroidApplicationConfiguration();
-		initialize(new ScrollingGame(this), config);
+		game = new ScrollingGame(this);
+		initialize(game, config);
 		permissionManager = PermissionManager.getInstance(this);
+		askAllPermissions();
+		SQLite = new SQLiteDataBaseHandler(this);
 
 		///////////////////////////////////////////////////////////////////
 		// Problem starts here:
-		TextureView textureView = new TextureView(getContext());
-		ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(100, 100);
+		setContentView(R.layout.activity_main);
+ 		TextureView textureView = findViewById(R.id.textureView);
 
-		textureView.setLayoutParams(params);
+//		TextureView textureView = new TextureView((Context) Gdx.app);
+//		ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(100, 100);
+//		textureView.setLayoutParams(params);
 		cameraTextureView = new TextureViewActor(textureView, getImagesDir());
-
+		cameraTextureView.setPosition(100, 100);
+		cameraTextureView.setSize(500, 500);
 		cameraHandler = new CameraHandler(this, cameraTextureView.getTextureView());
 		///////////////////////////////////////////////////////////////////
 
-		askAllPermissions();
-		SQLite = new SQLiteDataBaseHandler(this);
+		cameraTexture = cameraFootage;
+	}
+
+	private void renderGame(){
+		game.render();
 	}
 
 	@Override
@@ -89,7 +109,26 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	@Override
 	public Texture getCapturedImage() {
 //		return cameraFootage;
-		return cameraTextureView.getTexture();
+		String filePath = getImagesDir().getPath() + File.separator + "cameraTexture.png";
+
+		Bitmap bitmap = cameraTextureView.getTextureView().getBitmap();
+		if (bitmap != null) {
+			System.out.println("Heyyy");
+			try {
+				FileOutputStream fos = null;
+				fos = new FileOutputStream(filePath);
+				bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+				fos.close();
+				System.out.println("Success");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			cameraTexture = new Texture(filePath);
+		}
+		else{
+//			System.out.println("Bitmap is null !!!!!!!");
+		}
+		return cameraTexture;
 	}
 
 	private void syncFootage() {
@@ -185,6 +224,7 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	public void resetSQL(){
 		SQLite.reset();
 	}
+
 	@Override
 	public void addBoard(Board board, int boardNum){
 		SQLite.addBoard(board, Integer.toString(boardNum));
@@ -213,6 +253,12 @@ public class AndroidLauncher extends AndroidApplication implements CameraLaunche
 	@Override
 	public void addCameraActor(Stage stage) {
 		stage.addActor(cameraTextureView);
+	}
+
+	@Override
+	public void addSpriteBatchToTextureView(SpriteBatch batch) {
+		System.out.println("Drawing TextureViewActor");
+		cameraTextureView.draw(batch, 0.5f);
 	}
 
 	@Override

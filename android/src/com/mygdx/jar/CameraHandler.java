@@ -21,6 +21,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.media.MediaRecorder;
 import android.net.Uri;
+import android.opengl.GLES11Ext;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -247,7 +248,13 @@ public class CameraHandler {
 
     public void startPreview() {
         LinkedList<Surface> cameraTargets = new LinkedList<Surface>();
-        if (mTextureView != null && mTextureView.getSurfaceTexture() != null){
+        if (mTextureView != null && mTextureView.getSurfaceTexture() == null){
+            SurfaceTexture surfaceTexture = new SurfaceTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES);
+            mTextureView.setSurfaceTexture(surfaceTexture);
+            mTextureView.setOpaque(false);
+        }
+        if (mTextureView != null){
+            mTextureView.setOpaque(false);
             SurfaceTexture surfaceTexture = mTextureView.getSurfaceTexture();
             surfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
             cameraTargets.add(new Surface(surfaceTexture));

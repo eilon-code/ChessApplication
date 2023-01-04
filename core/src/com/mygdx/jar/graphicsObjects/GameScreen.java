@@ -27,7 +27,7 @@ import java.util.Stack;
 
 import sun.java2d.Surface;
 
-class GameScreen implements Screen {
+public class GameScreen implements Screen {
     private static final String ABC = "אבגדהוזחטיכלמנסעפצקרשתםןךףץ";
     private String[] CurrentTitlesList;
 
@@ -37,7 +37,6 @@ class GameScreen implements Screen {
 
     // graphics
     private final SpriteBatch batch;
-    private final Stage stage;
 
     private final Texture[] ScrollingBackgrounds;
     private final Texture[] BackgroundsChessBoardCells;
@@ -134,7 +133,9 @@ class GameScreen implements Screen {
     private boolean IsPermissionGranted;
     private Point ActivePiece;
 
-    GameScreen(int widthScreen, int heightScreen, CameraLauncher launcher) {
+    protected GameScreen(int widthScreen, int heightScreen, CameraLauncher launcher) {
+        Gdx.gl.glClearColor(100, 0, 0, 1);
+
         cameraLauncher = launcher;
         IsPermissionGranted = (cameraLauncher != null && cameraLauncher.isPermissionGranted());
         IsCameraEnabled = false;
@@ -262,9 +263,6 @@ class GameScreen implements Screen {
         backgroundMaxScrollingSpeed = (float) WORLD_HEIGHT / 4;
 
         batch = new SpriteBatch();
-        stage = new Stage();
-
-        cameraLauncher.addCameraActor(stage);
 
         // Touch things
         TouchingNow = false;
@@ -308,21 +306,17 @@ class GameScreen implements Screen {
         }
         previousState = (State.equals("Edit") ? previousState : State);
 
+        cameraLauncher.addSpriteBatchToTextureView(batch);
+
         batch.end();
 
-        if (IsCameraEnabled){
-            stage.draw();
-            System.out.println("Should draw camera !");
-        }
-//        else{
-//            stage.clear();
-//        }
+        System.out.println("render function of my custom screen is being called");
     }
 
     private void renderCameraState(float deltaTime) {
         String imgPath = "CameraStream/Picture1.png";
         if (CameraStream == null){
-            System.out.println("Something went wrong");
+//            System.out.println("Something went wrong");
             CameraStream = new Texture(imgPath);
         }
         batch.draw(CameraStream, WORLD_WIDTH / 8, WORLD_HEIGHT / 8 * 2, WORLD_WIDTH / 4 * 3, WORLD_HEIGHT / 8 * 5);
